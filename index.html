@@ -141,8 +141,8 @@ async function loadUI(role,user){
   if(role==="student") renderStudentUI(user);
 }
 
-// Admin
-function renderAdminUI(){
+// ----------------- Admin 全縣版 -----------------
+async function renderAdminUI(){
   contentArea.innerHTML=`
     <div class="section">
       <h3>用戶管理</h3>
@@ -155,19 +155,25 @@ function renderAdminUI(){
       <button id="setRoleBtn">設定</button>
     </div>
     <div class="section">
-      <h3>所有班級</h3>
+      <h3>全縣老師及班級</h3>
+      <ul id="allTeacherList"></ul>
+    </div>
+    <div class="section">
+      <h3>所有班級學生</h3>
       <ul id="allClassList"></ul>
     </div>
   `;
 
-  document.getElementById("setRoleBtn").onclick=async ()=>{
-    const email=document.getElementById("emailInput").value.trim();
-    const newRole=document.getElementById("roleSelect").value;
+  const setRoleBtn = document.getElementById("setRoleBtn");
+  setRoleBtn.onclick = async ()=>{
+    const email = document.getElementById("emailInput").value.trim();
+    const newRole = document.getElementById("roleSelect").value;
     if(!email) return alert("請輸入 Gmail");
+
     const usersSnap = await getDocs(collection(db,"users"));
     let found=false;
     for(const docSnap of usersSnap.docs){
-      if(docSnap.data().email===email){
+      if(docSnap.data().email === email){
         await updateDoc(doc(db,"users",docSnap.id),{role:newRole});
         alert("角色更新完成！");
         found=true;
@@ -175,15 +181,57 @@ function renderAdminUI(){
       }
     }
     if(!found) alert("找不到該使用者");
-
-    const allClassList=document.getElementById("allClassList");
-    const classesSnap=await getDocs(collection(db,"classes"));
-    allClassList.innerHTML="";
-    classesSnap.forEach(c=>{ allClassList.innerHTML+=`<li>${c.data().name} (${c.data().teacherId})</li>`; });
+    loadAllTeachers();
   };
+
+  async function loadAllTeachers(){
+    const allTeacherList = document.getElementById("allTeacherList");
+    allTeacherList.innerHTML = "";
+    const usersSnap = await getDocs(collection(db,"users"));
+    for(const docSnap of usersSnap.docs){
+      const u = docSnap.data();
+      if(u.role==="teacher"){
+        const li = document.createElement("li");
+        li.textContent = `${u.name} (${u.email})`;
+        li.style.cursor="pointer";
+        li.onclick = ()=> loadTeacherClasses(docSnap.id);
+        allTeacherList.appendChild(li);
+      }
+    }
+  }
+
+  async function loadTeacherClasses(teacherId){
+    const allClassList = document.getElementById("allClassList");
+    allClassList.innerHTML = "";
+    const q = query(collection(db,"classes"), where("teacherId","==",teacherId));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(docSnap=>{
+      const li = document.createElement("li");
+      li.textContent = docSnap.data().name;
+      li.style.cursor="pointer";
+      li.onclick = ()=> loadClassStudents(docSnap.id, docSnap.data().name);
+      allClassList.appendChild(li);
+    });
+  }
+
+  async function loadClassStudents(classId,className){
+    const ul = document.getElementById("allClassList");
+    ul.innerHTML = `<li><b>${className} 班學生名單</b></li>`;
+    const usersSnap = await getDocs(collection(db,"users"));
+    usersSnap.forEach(docSnap=>{
+      const u = docSnap.data();
+      if(u.classId===classId){
+        const li = document.createElement("li");
+        li.textContent = u.name + " (" + u.email + ")";
+        ul.appendChild(li);
+      }
+    });
+  }
+
+  loadAllTeachers();
 }
 
-// Teacher
+// ----------------- Teacher -----------------
 async function renderTeacherUI(user){
   contentArea.innerHTML=`
     <div class="section">
@@ -285,7 +333,7 @@ async function renderTeacherUI(user){
   loadClasses();
 }
 
-// Student
+// ----------------- Student -----------------
 async function renderStudentUI(user){
   contentArea.innerHTML=`<div class="section"><h3>你的試卷</h3><ul id="testList"></ul></div>`;
   const testList=document.getElementById("testList");
