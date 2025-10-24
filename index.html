@@ -8,57 +8,57 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
 <style>
-  body {
-    margin:0;
-    font-family:"Segoe UI",sans-serif;
-    background: linear-gradient(135deg,#f5f6fa,#e9ecef);
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    min-height:100vh;
-    padding:40px 0;
-  }
-  .card {
-    background:#fff;
-    border-radius:16px;
-    box-shadow:0 4px 16px rgba(0,0,0,0.1);
-    width:400px;
-    max-width:90%;
-    padding:30px;
-    margin:15px auto;
-    text-align:center;
-    transition:0.3s;
-  }
-  .card:hover { box-shadow:0 6px 20px rgba(0,0,0,0.15);}
-  button {
-    width:100%;
-    padding:10px 16px;
-    font-size:16px;
-    border:none;
-    border-radius:8px;
-    background:#4285F4;
-    color:#fff;
-    cursor:pointer;
-    margin-top:10px;
-    transition:0.3s;
-  }
-  button:hover { background:#3367D6; }
-  #logoutBtn { background:#e74c3c; }
-  #logoutBtn:hover { background:#c0392b; }
-  input, select, textarea {
-    width:100%;
-    padding:10px;
-    margin:6px 0;
-    border-radius:8px;
-    border:1px solid #ccc;
-    font-size:14px;
-  }
-  h1,h2,h3,h4 { margin:10px 0; }
-  ul { padding:0; list-style:none; }
-  li { background:#f8f9fa; margin:6px 0; padding:8px; border-radius:8px; cursor:pointer; transition:0.2s; }
-  li:hover { background:#e2e6ea; }
-  .hidden { display:none; }
-  .section { text-align:left; margin-top:20px; }
+body {
+  margin:0;
+  font-family:"Segoe UI",sans-serif;
+  background: linear-gradient(135deg,#f5f6fa,#e9ecef);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  min-height:100vh;
+  padding:40px 0;
+}
+.card {
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+  width:400px;
+  max-width:90%;
+  padding:30px;
+  margin:15px auto;
+  text-align:center;
+  transition:0.3s;
+}
+.card:hover { box-shadow:0 6px 20px rgba(0,0,0,0.15);}
+button {
+  width:100%;
+  padding:10px 16px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  background:#4285F4;
+  color:#fff;
+  cursor:pointer;
+  margin-top:10px;
+  transition:0.3s;
+}
+button:hover { background:#3367D6; }
+#logoutBtn { background:#e74c3c; }
+#logoutBtn:hover { background:#c0392b; }
+input, select, textarea {
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-size:14px;
+}
+h1,h2,h3,h4 { margin:10px 0; }
+ul { padding:0; list-style:none; }
+li { background:#f8f9fa; margin:6px 0; padding:8px; border-radius:8px; cursor:pointer; transition:0.2s; }
+li:hover { background:#e2e6ea; }
+.hidden { display:none; }
+.section { text-align:left; margin-top:20px; }
 </style>
 </head>
 <body>
@@ -180,13 +180,9 @@ async function renderTeacherUI(user){
       <button id="createClassBtn">建立班級</button>
       <ul id="classList"></ul>
     </div>
-    <div id="classPage" class="section hidden">
-      <h3 id="classTitle"></h3>
-      <input type="text" id="studentName" placeholder="新增學生姓名">
-      <button id="addStudentBtn">新增學生</button>
-      <ul id="studentList"></ul>
-      <hr>
-      <h4>出題給學生</h4>
+
+    <div id="rangeSection" class="section hidden">
+      <h3>選擇出題範圍</h3>
       <select id="levelSelect">
         <option value="">選擇學段</option>
         <option value="國小">國小</option>
@@ -194,25 +190,23 @@ async function renderTeacherUI(user){
         <option value="高中">高中</option>
       </select>
       <select id="subjectSelect"><option value="">選擇科目</option></select>
+      <select id="classSelect"><option value="">選擇班級</option></select>
+      <select id="studentSelect"><option value="">選擇學生(可選全班)</option></select>
+      <button id="confirmRangeBtn">確定範圍</button>
+    </div>
+
+    <div id="questionSection" class="section hidden">
+      <h3>出題內容</h3>
       <textarea id="questionContent" rows="3" placeholder="輸入題目內容"></textarea>
       <button id="addQuestionBtn">出題</button>
     </div>
   `;
+
   const classList = document.getElementById("classList");
-  const classPage = document.getElementById("classPage");
-  const subjectSelect = document.getElementById("subjectSelect");
-  const levelSelect = document.getElementById("levelSelect");
   let currentClassId = "";
+  let selectedRange = {};
 
-  levelSelect.addEventListener("change",()=>{
-    const level=levelSelect.value;
-    let subjects=[];
-    if(level==="國小") subjects=["國語","英文","數學","自然","社會"];
-    if(level==="國中") subjects=["國語","英文","數學","生物","理化","地科","歷史","地理","公民"];
-    if(level==="高中") subjects=["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民"];
-    subjectSelect.innerHTML=`<option value="">選擇科目</option>`+subjects.map(s=>`<option value="${s}">${s}</option>`).join("");
-  });
-
+  // 建立班級
   document.getElementById("createClassBtn").onclick=async ()=>{
     const name=document.getElementById("className").value.trim();
     if(!name) return alert("請輸入班級名稱");
@@ -225,47 +219,51 @@ async function renderTeacherUI(user){
     classList.innerHTML="";
     const q=query(collection(db,"classes"),where("teacherId","==",user.uid));
     const snapshot=await getDocs(q);
+    const classSelect = document.getElementById("classSelect");
+    classSelect.innerHTML=`<option value="">選擇班級</option>`;
     snapshot.forEach(docSnap=>{
       const li=document.createElement("li");
       li.textContent=docSnap.data().name;
-      li.onclick=()=>openClass(docSnap.id,docSnap.data().name);
+      li.onclick=()=>{ currentClassId=docSnap.id; alert(`選擇班級: ${docSnap.data().name}`); };
       classList.appendChild(li);
+      classSelect.innerHTML+=`<option value="${docSnap.id}">${docSnap.data().name}</option>`;
     });
   }
 
-  async function openClass(classId,className){
-    currentClassId=classId;
-    classPage.classList.remove("hidden");
-    document.getElementById("classTitle").textContent=`📘 ${className}`;
-    loadStudents();
-  }
+  // 學段選科目
+  document.getElementById("levelSelect").addEventListener("change",()=>{
+    const level=document.getElementById("levelSelect").value;
+    let subjects=[];
+    if(level==="國小") subjects=["國語","英文","數學","自然","社會"];
+    if(level==="國中") subjects=["國語","英文","數學","生物","理化","地科","歷史","地理","公民"];
+    if(level==="高中") subjects=["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民"];
+    document.getElementById("subjectSelect").innerHTML=`<option value="">選擇科目</option>`+subjects.map(s=>`<option value="${s}">${s}</option>`).join("");
+  });
 
-  document.getElementById("addStudentBtn").onclick=async ()=>{
-    const name=document.getElementById("studentName").value.trim();
-    if(!name) return alert("請輸入學生姓名");
-    await addDoc(collection(db,"students"),{name,classId:currentClassId});
-    loadStudents();
+  // 確定範圍
+  document.getElementById("confirmRangeBtn").onclick=()=>{
+    const level=document.getElementById("levelSelect").value;
+    const subject=document.getElementById("subjectSelect").value;
+    const classId=document.getElementById("classSelect").value;
+    const student=document.getElementById("studentSelect").value;
+    if(!level||!subject||!classId) return alert("請完整選擇範圍");
+    selectedRange={level,subject,classId,student};
+    document.getElementById("questionSection").classList.remove("hidden");
+    alert(`已選範圍: ${level} ${subject}`);
   };
 
-  async function loadStudents(){
-    const studentList=document.getElementById("studentList");
-    studentList.innerHTML="";
-    const q=query(collection(db,"students"),where("classId","==",currentClassId));
-    const snapshot=await getDocs(q);
-    snapshot.forEach(docSnap=>{
-      const li=document.createElement("li");
-      li.textContent=docSnap.data().name;
-      studentList.appendChild(li);
-    });
-  }
-
+  // 出題
   document.getElementById("addQuestionBtn").onclick=async ()=>{
-    const level=levelSelect.value;
-    const subject=subjectSelect.value;
     const content=document.getElementById("questionContent").value.trim();
-    if(!level||!subject||!content||!currentClassId) return alert("請完整填寫");
-    await addDoc(collection(db,"questions"),{level,subject,content,classId:currentClassId,teacherId:user.uid,timestamp:Date.now()});
+    if(!content) return alert("請輸入題目內容");
+    await addDoc(collection(db,"questions"),{
+      ...selectedRange,
+      content,
+      teacherId:user.uid,
+      timestamp:Date.now()
+    });
     alert("出題成功！");
+    document.getElementById("questionContent").value="";
   };
 
   loadClasses();
@@ -277,9 +275,12 @@ async function renderStudentUI(user){
   const testList=document.getElementById("testList");
   const snapshot=await getDocs(collection(db,"questions"));
   snapshot.forEach(docSnap=>{
-    const li=document.createElement("li");
-    li.textContent=`${docSnap.data().level} ${docSnap.data().subject}：${docSnap.data().content}`;
-    testList.appendChild(li);
+    const q=docSnap.data();
+    if(q.student===user.uid||!q.student) {
+      const li=document.createElement("li");
+      li.textContent=`${q.level} ${q.subject}：${q.content}`;
+      testList.appendChild(li);
+    }
   });
 }
 </script>
