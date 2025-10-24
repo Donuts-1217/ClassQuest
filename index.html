@@ -8,9 +8,9 @@
   body { font-family: Arial, sans-serif; text-align:center; padding:20px; background:#f5f5f5; }
   h1,h2,h3,h4 { margin:10px; }
   button, input, select, textarea { margin:5px; padding:8px; font-size:14px; }
-  #loginDiv, #mainPage { margin:20px auto; max-width:600px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+  #loginDiv, #mainPage { margin:20px auto; max-width:700px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
   ul { list-style:none; padding:0; }
-  li { margin:5px 0; }
+  li { margin:5px 0; cursor:pointer; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -49,6 +49,16 @@
   <div id="teacherPage" style="display:none;">
     <h3>班級列表</h3>
     <ul id="classList"></ul>
+
+    <div id="classPageDiv" style="display:none;">
+      <h4 id="classTitle"></h4>
+      <input type="email" id="studentEmail" placeholder="學生 Gmail">
+      <button onclick="addStudent()">新增學生</button>
+      <ul id="studentList"></ul>
+
+      <h4>指派試卷</h4>
+      <button onclick="assignTest()">指派試卷</button>
+    </div>
 
     <h3>出題系統</h3>
     <input type="text" id="questionTitle" placeholder="題目名稱"><br>
@@ -98,15 +108,13 @@
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -118,7 +126,6 @@ const studentPage = document.getElementById('studentPage');
 const teacherPage = document.getElementById('teacherPage');
 const adminPage = document.getElementById('adminPage');
 
-// 登入
 document.getElementById('googleSignIn').addEventListener('click', () => {
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).then(result => {
@@ -127,7 +134,6 @@ document.getElementById('googleSignIn').addEventListener('click', () => {
   });
 });
 
-// 檢查用戶角色
 function checkUser(user) {
   loginDiv.style.display = "none";
   mainPage.style.display = "block";
@@ -173,7 +179,6 @@ function createUser() {
   const email = document.getElementById('newUserEmail').value;
   const role = document.getElementById('newUserRole').value;
   if(!email) return alert("請輸入 Gmail");
-  // 這裡假設管理者事先通知用戶用 Google 登入
   db.collection("users").add({name:"",email,role});
   alert("用戶已新增");
   loadUsers();
@@ -205,74 +210,4 @@ function createClass() {
   db.collection("users").doc(teacherId).get().then(tdoc=>{
     const teacherName = tdoc.data().name;
     db.collection("classes").add({name,teacherId,teacherName}).then(()=>{
-      alert("班級建立完成");
-      document.getElementById('newClassName').value="";
-      loadAllClasses();
-    });
-  });
-}
-
-// ---------------- 老師 ----------------
-function loadTeacherPage(uid){
-  teacherPage.style.display = "block";
-  const classList = document.getElementById('classList');
-  db.collection("classes").where("teacherId","==",uid).get().then(snapshot=>{
-    classList.innerHTML="";
-    snapshot.forEach(doc=>{
-      const li = document.createElement("li");
-      li.innerText = doc.data().name;
-      classList.appendChild(li);
-    });
-  });
-}
-
-function saveQuestion(){
-  const title=document.getElementById('questionTitle').value;
-  const content=document.getElementById('questionContent').value;
-  const optionA=document.getElementById('optionA').value;
-  const optionB=document.getElementById('optionB').value;
-  const optionC=document.getElementById('optionC').value;
-  const optionD=document.getElementById('optionD').value;
-  const correct=document.getElementById('correctAnswer').value;
-  const explanation=document.getElementById('explanation').value;
-  const grade=document.getElementById('gradeLevel').value;
-  const subject=document.getElementById('subject').value;
-
-  if(!title||!content||!optionA||!optionB||!optionC||!optionD) return alert("請填完整題目與選項");
-
-  const user = auth.currentUser;
-  db.collection("questions").add({
-    title, content,
-    options:{A:optionA,B:optionB,C:optionC,D:optionD},
-    correct, explanation,
-    grade, subject,
-    teacherId:user.uid,
-    timestamp:Date.now()
-  }).then(()=>{
-    alert("題目已儲存");
-    // 清空表單
-    document.getElementById('questionTitle').value="";
-    document.getElementById('questionContent').value="";
-    document.getElementById('optionA').value="";
-    document.getElementById('optionB').value="";
-    document.getElementById('optionC').value="";
-    document.getElementById('optionD').value="";
-    document.getElementById('explanation').value="";
-  });
-}
-
-// ---------------- 學生 ----------------
-function loadStudentPage(uid){
-  studentPage.style.display="block";
-  db.collection("questions").get().then(snapshot=>{
-    const ul=document.getElementById("studentTestsList");
-    ul.innerHTML="";
-    snapshot.forEach(doc=>{
-      const q=doc.data();
-      ul.innerHTML+=`<li>${q.title} - ${q.content}</li>`;
-    });
-  });
-}
-</script>
-</body>
-</html>
+     
