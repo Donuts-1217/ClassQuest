@@ -2,114 +2,128 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QuizNova 系統</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<title>出題系統整合版</title>
 <style>
 body {
-  font-family: "Noto Sans TC", sans-serif;
-  background: #f4f6f8;
-  margin:0; padding:0;
-  display:flex; justify-content:center; align-items:flex-start;
-  min-height:100vh;
+  font-family: "Microsoft JhengHei", sans-serif;
+  background: #f8f9fc;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
 }
-.container { width:95%; max-width:900px; margin-top:30px; }
-.card { background:white; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.1); padding:20px; margin-bottom:20px; }
-h1,h2,h3,h4 { color:#333; margin-bottom:10px; text-align:center; }
-.flex-row { display:flex; align-items:center; margin-bottom:10px; flex-wrap:wrap; justify-content:center; }
-.flex-row > * { margin-right:10px; margin-bottom:5px; }
-button { background-color:#4CAF50; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; text-align:center; }
-button:hover { background-color:#45a049; }
-input, select, textarea { padding:6px; border-radius:4px; border:1px solid #ccc; margin-right:5px; }
-textarea { resize: vertical; width: 100%; min-height:50px; }
-.list-item { background:#fff; padding:10px; margin:5px 0; border-radius:4px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  max-width: 600px;
+  margin: 20px auto;
+}
+input, select, textarea {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+button {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+button:hover { background: #3730a3; }
+.flex-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>QuizNova 答題系統</h1>
 
+<!-- 🔹 登入畫面 -->
 <div id="loginDiv" class="card">
-  <button id="googleSignIn">使用 Google 登入</button>
+  <h2>登入系統</h2>
+  <input type="email" id="loginEmail" placeholder="Email"><br><br>
+  <input type="password" id="loginPassword" placeholder="密碼"><br><br>
+  <button id="loginBtn">登入</button>
+  <button id="registerBtn">註冊</button>
 </div>
 
-<div id="mainPage" style="display:none;">
-  <h2 id="welcomeMsg"></h2>
+<!-- 🔹 老師頁面 -->
+<div id="teacherPage" class="card" style="display:none;">
+  <h2>班級管理</h2>
 
-  <!-- 管理者 -->
-  <div id="adminPage" class="card" style="display:none;">
-    <h3>用戶管理</h3>
+  <!-- 建立班級 -->
+  <div class="flex-row" style="margin-bottom:15px;">
+    <input type="text" id="newClassName" placeholder="輸入班級名稱" style="width:200px;">
+    <button id="createClassBtn">建立班級</button>
+  </div>
+
+  <!-- 班級列表 -->
+  <h3>你的班級</h3>
+  <ul id="classList" style="list-style:none; padding:0;"></ul>
+
+  <!-- 班級內頁 -->
+  <div id="classPageDiv" class="card" style="display:none;">
+    <h3 id="classTitle"></h3>
+
+    <!-- 新增學生 -->
+    <div class="flex-row" style="margin-bottom:10px;">
+      <input type="text" id="studentName" placeholder="學生姓名" style="width:200px;">
+      <button id="addStudentBtn">新增學生</button>
+    </div>
+
+    <!-- 出題系統 -->
+    <h3>出題系統</h3>
+    <input type="text" id="questionTitle" placeholder="題目名稱" style="width:300px;"><br><br>
+    <textarea id="questionContent" placeholder="題目內容" style="width:300px; height:100px;"></textarea><br><br>
+
+    <!-- 學制與科目 -->
     <div class="flex-row">
-      <input type="email" id="manageUserEmail" placeholder="輸入 Gmail">
-      <select id="manageUserRole">
-        <option value="student">學生</option>
-        <option value="teacher">老師</option>
-        <option value="admin">管理者</option>
+      <label>學制：</label>
+      <select id="educationLevel" onchange="updateSubjects()">
+        <option value="">請選擇學制</option>
+        <option value="elementary">國小</option>
+        <option value="junior">國中</option>
+        <option value="senior">高中</option>
       </select>
-      <button id="manageUserBtn">設定</button>
-    </div>
-    <h4>已有用戶</h4>
-    <div id="userList"></div>
-    <h3>所有班級</h3>
-    <div id="allClassList"></div>
-  </div>
 
-  <!-- 老師 -->
-  <div id="teacherPage" class="card" style="display:none;">
-    <h3>班級管理</h3>
+      <label>科目：</label>
+      <select id="subjectSelect">
+        <option value="">請先選擇學制</option>
+      </select>
+    </div><br>
+
+    <!-- 出題對象 -->
     <div class="flex-row">
-      <input type="text" id="newClassName" placeholder="班級名稱">
-      <button id="createClassBtn">建立班級</button>
-    </div>
-    <div id="classList"></div>
+      <label>出題對象：</label>
+      <select id="questionTarget">
+        <option value="all">全班</option>
+        <option value="individual">個人</option>
+      </select>
+    </div><br>
 
-    <!-- 班級頁面 -->
-    <div id="classPageDiv" class="card" style="display:none;">
-      <h4 id="classTitle"></h4>
-      <div class="flex-row">
-        <input type="text" id="studentName" placeholder="學生姓名">
-        <button id="addStudentBtn">新增學生</button>
-      </div>
-      <h4>出題系統</h4>
-      <div class="flex-row">
-        <input type="text" id="questionTitle" placeholder="題目名稱" style="width:60%;">
-      </div>
-      <div class="flex-row">
-        <textarea id="questionContent" placeholder="題目內容"></textarea>
-      </div>
-      <div class="flex-row">
-        <select id="questionTarget">
-          <option value="all">全班</option>
-          <option value="individual">個人</option>
-        </select>
-        <select id="saveLocation">
-          <option value="elementary_chinese">國小-國語</option>
-          <option value="elementary_english">國小-英文</option>
-          <option value="elementary_math">國小-數學</option>
-          <option value="junior_chinese">國中-國語</option>
-          <option value="junior_english">國中-英文</option>
-          <option value="junior_math">國中-數學</option>
-          <option value="senior_chinese">高中-國語</option>
-          <option value="senior_english">高中-英文</option>
-          <option value="senior_math">高中-數學</option>
-        </select>
-        <button id="saveQuestionBtn">儲存題目</button>
-      </div>
-    </div>
+    <button id="saveQuestionBtn">儲存題目</button>
   </div>
-
-  <!-- 學生 -->
-  <div id="studentPage" class="card" style="display:none;">
-    <h3>你的試卷</h3>
-    <div id="studentTestsList"></div>
-  </div>
-
 </div>
+
+<!-- 🔹 學生頁面 -->
+<div id="studentPage" class="card" style="display:none;">
+  <h2>題目列表</h2>
+  <div id="questionList"></div>
+</div>
+
+<!-- 🔹 Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js"></script>
 
 <script>
+// 🔧 Firebase 初始化
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
   authDomain: "classquest-419e1.firebaseapp.com",
@@ -123,177 +137,144 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// 元素
-const loginDiv = document.getElementById('loginDiv');
-const mainPage = document.getElementById('mainPage');
-const welcomeMsg = document.getElementById('welcomeMsg');
-const studentPage = document.getElementById('studentPage');
-const teacherPage = document.getElementById('teacherPage');
-const adminPage = document.getElementById('adminPage');
+let currentUser = null;
+let currentClassId = null;
 
-// Google 登入
-document.getElementById('googleSignIn').addEventListener('click', () => {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).then(result => {
-    const user = result.user;
-    checkUser(user);
-  }).catch(err => alert(err.message));
+// 登入
+document.getElementById("loginBtn").addEventListener("click", ()=>{
+  const email = loginEmail.value;
+  const pass = loginPassword.value;
+  auth.signInWithEmailAndPassword(email, pass).then(res=>{
+    currentUser = res.user;
+    loadRole();
+  }).catch(e=>alert("登入失敗：" + e.message));
 });
 
-// 檢查用戶
-function checkUser(user){
-  loginDiv.style.display="none";
-  mainPage.style.display="block";
-  db.collection("users").doc(user.uid).get().then(doc=>{
-    if(!doc.exists){
-      db.collection("users").doc(user.uid).set({
-        name:user.displayName,
-        email:user.email,
-        role:"student",
-        classId:null
-      });
-    }
-    const role = doc.exists ? doc.data().role : "student";
-    welcomeMsg.innerText = `歡迎 ${user.displayName} (${role})`;
-    if(role==="admin") loadAdminPage();
-    else if(role==="teacher") loadTeacherPage(user.uid);
-    else loadStudentPage(user.uid);
-  });
-}
-
-// ---------------- 管理者 ----------------
-const manageUserBtn = document.getElementById('manageUserBtn');
-manageUserBtn.addEventListener('click', manageUser);
-
-function loadAdminPage(){
-  adminPage.style.display="block";
-  loadUsers();
-  loadAllClasses();
-}
-
-function manageUser(){
-  const email = document.getElementById("manageUserEmail").value.trim();
-  const role = document.getElementById("manageUserRole").value;
-  if(!email) return alert("請輸入 Gmail");
-  db.collection("users").where("email","==",email).get().then(snapshot=>{
-    if(!snapshot.empty){
-      snapshot.docs.forEach(doc=>{
-        db.collection("users").doc(doc.id).update({role}).then(loadUsers);
-      });
-    }else{
-      const name = email.split("@")[0];
-      db.collection("users").add({name,email,role,classId:null}).then(loadUsers);
-    }
-  });
-}
-
-function loadUsers(){
-  const ul = document.getElementById("userList");
-  ul.innerHTML="";
-  db.collection("users").get().then(snapshot=>{
-    snapshot.forEach(doc=>{
-      const user = doc.data();
-      const div = document.createElement("div");
-      div.className="list-item";
-      div.innerText = `${user.name} (${user.email}) - ${user.role}`;
-      ul.appendChild(div);
+// 註冊
+document.getElementById("registerBtn").addEventListener("click", ()=>{
+  const email = loginEmail.value;
+  const pass = loginPassword.value;
+  auth.createUserWithEmailAndPassword(email, pass).then(res=>{
+    db.collection("users").doc(res.user.uid).set({
+      email,
+      role: "student",
+      name: email.split("@")[0]
     });
+    alert("註冊成功！");
+  }).catch(e=>alert("註冊失敗：" + e.message));
+});
+
+// 判斷身份進入畫面
+function loadRole(){
+  db.collection("users").doc(currentUser.uid).get().then(doc=>{
+    if(!doc.exists) return alert("無此使用者資料");
+    const role = doc.data().role;
+    loginDiv.style.display = "none";
+    if(role === "teacher") loadTeacherPage(currentUser.uid);
+    else loadStudentPage(currentUser.uid);
   });
 }
 
-function loadAllClasses(){
-  const ul = document.getElementById("allClassList");
-  ul.innerHTML="";
-  db.collection("classes").get().then(snapshot=>{
-    snapshot.forEach(doc=>{
-      const div = document.createElement("div");
-      div.className="list-item";
-      div.innerText = doc.data().name;
-      ul.appendChild(div);
-    });
-  });
-}
-
-// ---------------- 老師 ----------------
-let currentTeacherId="", currentClassId="";
+// ---------------- 老師系統 ----------------
 const classList = document.getElementById('classList');
-const createClassBtn = document.getElementById('createClassBtn');
-const addStudentBtn = document.getElementById('addStudentBtn');
-const saveQuestionBtn = document.getElementById('saveQuestionBtn');
 const classPageDiv = document.getElementById('classPageDiv');
+const classTitle = document.getElementById('classTitle');
 
 function loadTeacherPage(uid){
-  teacherPage.style.display="block";
-  currentTeacherId = uid;
-  refreshClassList();
+  teacherPage.style.display = "block";
+  loadTeacherClasses(uid);
 }
 
-// 刷新班級列表
-function refreshClassList(){
-  classList.innerHTML="";
-  db.collection("classes").where("teacherId","==",currentTeacherId).get().then(snapshot=>{
-    snapshot.forEach(doc=>{
-      const div = document.createElement("div");
-      div.className="list-item";
-      div.innerHTML = `<span>${doc.data().name}</span>
-        <button onclick="openClassPage('${doc.id}','${doc.data().name}')">進入班級</button>`;
-      classList.appendChild(div);
+function loadTeacherClasses(uid){
+  classList.innerHTML = "";
+  db.collection("classes").where("teacherId","==",uid).get().then(snap=>{
+    snap.forEach(doc=>{
+      const li = document.createElement("li");
+      li.innerHTML = `<button onclick="openClassPage('${doc.id}','${doc.data().name}')">${doc.data().name}</button>`;
+      classList.appendChild(li);
     });
   });
 }
 
 // 建立班級
-createClassBtn.addEventListener('click', ()=>{
-  const name = document.getElementById('newClassName').value.trim();
+createClassBtn.addEventListener("click", ()=>{
+  const name = newClassName.value.trim();
   if(!name) return alert("請輸入班級名稱");
-  db.collection("classes").add({name,teacherId:currentTeacherId})
-    .then(()=>{ document.getElementById('newClassName').value=""; refreshClassList(); })
-    .catch(err=>alert("建立班級失敗: "+err.message));
+  db.collection("classes").add({ name, teacherId: currentUser.uid }).then(()=>{
+    alert("班級建立成功");
+    loadTeacherClasses(currentUser.uid);
+    newClassName.value = "";
+  });
 });
 
-// 開啟班級
-function openClassPage(classId,className){
-  currentClassId=classId;
-  classPageDiv.style.display='block';
-  document.getElementById('classTitle').innerText=className;
+function openClassPage(id, name){
+  currentClassId = id;
+  classPageDiv.style.display = "block";
+  classTitle.innerText = name;
 }
 
 // 新增學生
-addStudentBtn.addEventListener('click', ()=>{
-  const name = document.getElementById('studentName').value.trim();
+addStudentBtn.addEventListener("click", ()=>{
+  const name = studentName.value.trim();
   if(!name) return alert("請輸入學生姓名");
-  db.collection("users").add({name,email:"",role:"student",classId:currentClassId})
-    .then(()=>{ alert(`學生 ${name} 已新增`); document.getElementById('studentName').value=""; });
+  db.collection("users").add({
+    name, email:"", role:"student", classId: currentClassId
+  }).then(()=>alert("學生新增成功")).catch(e=>alert(e.message));
+  studentName.value = "";
 });
+
+// 學制科目動態
+function updateSubjects(){
+  const edu = educationLevel.value;
+  const map = {
+    elementary:["國語","英文","數學","自然","社會"],
+    junior:["國語","英文","數學","生物","理化","地科","歷史","地理","公民"],
+    senior:["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民"]
+  };
+  subjectSelect.innerHTML = "";
+  if(!map[edu]) return subjectSelect.innerHTML=`<option>請先選學制</option>`;
+  map[edu].forEach(s=>{
+    const opt = document.createElement("option");
+    opt.value = s; opt.textContent = s;
+    subjectSelect.appendChild(opt);
+  });
+}
 
 // 儲存題目
-saveQuestionBtn.addEventListener('click', ()=>{
-  const title = document.getElementById('questionTitle').value.trim();
-  const content = document.getElementById('questionContent').value.trim();
-  const target = document.getElementById('questionTarget').value;
-  const location = document.getElementById('saveLocation').value;
-  if(!title||!content) return alert("請輸入題目名稱與內容");
+saveQuestionBtn.addEventListener("click", ()=>{
+  const title = questionTitle.value.trim();
+  const content = questionContent.value.trim();
+  const edu = educationLevel.value;
+  const sub = subjectSelect.value;
+  const target = questionTarget.value;
+  if(!title||!content||!edu||!sub) return alert("請完整填寫");
   db.collection("questions").add({
-    title, content, creatorId:currentTeacherId, target, location, timestamp:Date.now()
-  }).then(()=>{ alert("題目已儲存"); document.getElementById('questionTitle').value=""; document.getElementById('questionContent').value=""; });
+    title, content, edu, sub, target,
+    teacherId: currentUser.uid, classId: currentClassId,
+    timestamp: Date.now()
+  }).then(()=>alert("題目已儲存"));
+  questionTitle.value = questionContent.value = "";
 });
 
-// ---------------- 學生 ----------------
+// ---------------- 學生系統 ----------------
 function loadStudentPage(uid){
-  studentPage.style.display="block";
-  db.collection("questions").where("target","==","all").get().then(snapshot=>{
-    const ul = document.getElementById("studentTestsList");
-    ul.innerHTML="";
-    snapshot.forEach(doc=>{
-      const q = doc.data();
-      const div = document.createElement("div");
-      div.className="list-item";
-      div.innerText = `${q.title} - ${q.content}`;
-      ul.appendChild(div);
+  studentPage.style.display = "block";
+  db.collection("users").doc(uid).get().then(doc=>{
+    const classId = doc.data().classId;
+    if(!classId) return alert("尚未分配班級");
+    db.collection("questions").where("classId","==",classId).get().then(snap=>{
+      const list = document.getElementById("questionList");
+      list.innerHTML = "";
+      snap.forEach(q=>{
+        const d = q.data();
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `<h4>${d.title}</h4><p>${d.content}</p><small>${d.edu} - ${d.sub}</small>`;
+        list.appendChild(div);
+      });
     });
   });
 }
 </script>
-</div>
 </body>
 </html>
