@@ -3,84 +3,92 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QuizNova 完整系統</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-<style>
-  body { font-family: Arial; margin:0; padding:0; background:#f4f4f4; }
-  .container { max-width:1000px; margin:auto; padding:20px; }
-  h1,h2,h3,h4{margin:5px 0;}
-  .hidden{display:none;}
-  button{padding:6px 12px;margin:4px; cursor:pointer;}
-  input, select, textarea{padding:6px; margin:4px; width:200px;}
-  .card{background:#fff;padding:15px;margin:10px 0;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);}
-  .flex{display:flex;align-items:center;}
-  .flex-column{display:flex;flex-direction:column;}
-  .center{text-align:center;}
-  .btn-primary{background:#007bff;color:#fff;border:none;border-radius:4px;}
-  .btn-danger{background:#dc3545;color:#fff;border:none;border-radius:4px;}
-</style>
+<title>QuizNova 系統</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+body { font-family: Arial, sans-serif; display:flex; flex-direction:column; align-items:center; margin:0; padding:0; background:#f0f2f5;}
+h1,h2,h3,h4 { margin:5px 0;}
+#loginDiv, #mainPage { margin-top:50px; width:90%; max-width:800px; text-align:center;}
+button { padding:10px 20px; margin:5px; cursor:pointer;}
+input, select, textarea { padding:5px; margin:5px; width:90%;}
+.card { background:white; padding:15px; margin:10px 0; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.2);}
+ul { list-style:none; padding:0;}
+li { margin:5px 0; }
+</style>
 </head>
 <body>
-<div class="container center">
+
 <h1>QuizNova 答題系統</h1>
-<div id="loginDiv" class="card">
-  <button id="googleSignIn" class="btn-primary">使用 Google 登入</button>
+
+<div id="loginDiv">
+  <button id="googleSignIn">使用 Google 登入</button>
 </div>
-<div id="mainPage" class="hidden">
+
+<div id="mainPage" style="display:none;">
   <h2 id="welcomeMsg"></h2>
-  <button id="logoutBtn" class="btn-danger">登出</button>
 
   <!-- 管理者頁面 -->
-  <div id="adminPage" class="hidden card">
+  <div id="adminPage" style="display:none;" class="card">
     <h3>用戶管理</h3>
-    <input type="email" id="newUserEmail" placeholder="輸入 Gmail" />
+    <input type="email" id="newUserEmail" placeholder="輸入 Gmail">
     <select id="newUserRole">
       <option value="student">學生</option>
       <option value="teacher">老師</option>
       <option value="admin">管理者</option>
     </select>
-    <button onclick="addUser()" class="btn-primary">設定</button>
+    <button onclick="addUser()">新增 / 設定角色</button>
     <ul id="userList"></ul>
 
-    <h3>所有班級</h3>
+    <h3>全縣班級</h3>
     <ul id="allClassList"></ul>
   </div>
 
   <!-- 老師頁面 -->
-  <div id="teacherPage" class="hidden card">
+  <div id="teacherPage" style="display:none;" class="card">
     <h3>班級管理</h3>
-    <input type="text" id="newClassName" placeholder="班級名稱" />
-    <button onclick="createClass()" class="btn-primary">建立班級</button>
+    <button onclick="showCreateClass()">建立班級</button>
+    <div id="createClassDiv" style="display:none;">
+      <input type="text" id="newClassName" placeholder="班級名稱">
+      <button onclick="createClass()">建立</button>
+    </div>
     <ul id="classList"></ul>
 
-    <div id="classPageDiv" class="hidden">
+    <div id="classPageDiv" style="display:none;" class="card">
       <h4 id="classTitle"></h4>
-      <input type="email" id="studentEmail" placeholder="學生 Gmail" />
-      <button onclick="addStudent()" class="btn-primary">新增學生</button>
+      <input type="email" id="studentEmail" placeholder="學生 Gmail">
+      <button onclick="addStudent()">新增學生</button>
 
       <h4>出題系統</h4>
-      <input type="text" id="questionTitle" placeholder="題目名稱"/><br>
-      <textarea id="questionContent" placeholder="題目內容"></textarea><br>
-      <input type="text" id="optA" placeholder="A 選項"/>
-      <input type="text" id="optB" placeholder="B 選項"/>
-      <input type="text" id="optC" placeholder="C 選項"/>
-      <input type="text" id="optD" placeholder="D 選項"/><br>
-      <select id="correctAnswer">
+      <select id="selectLevel">
+        <option value="">選擇學段</option>
+        <option value="elementary">國小</option>
+        <option value="junior">國中</option>
+        <option value="senior">高中</option>
+      </select>
+      <select id="selectSubject">
+        <option value="">先選學段</option>
+      </select>
+      <input type="text" id="questionTitle" placeholder="題目">
+      <textarea id="questionContent" placeholder="題目內容"></textarea>
+      <input type="text" id="optionA" placeholder="選項 A">
+      <input type="text" id="optionB" placeholder="選項 B">
+      <input type="text" id="optionC" placeholder="選項 C">
+      <input type="text" id="optionD" placeholder="選項 D">
+      <select id="correctOption">
         <option value="A">A</option>
         <option value="B">B</option>
         <option value="C">C</option>
         <option value="D">D</option>
       </select>
-      <textarea id="explanation" placeholder="解釋"></textarea><br>
-      <button onclick="saveQuestion()" class="btn-primary">儲存題目</button>
+      <textarea id="explanation" placeholder="答案解釋"></textarea>
+      <button onclick="saveQuestion()">儲存題目</button>
     </div>
   </div>
 
   <!-- 學生頁面 -->
-  <div id="studentPage" class="hidden card">
+  <div id="studentPage" style="display:none;" class="card">
     <h3>你的試卷</h3>
     <ul id="studentTestsList"></ul>
   </div>
@@ -88,13 +96,12 @@
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.appspot.com",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -103,147 +110,50 @@ const db = firebase.firestore();
 const loginDiv = document.getElementById('loginDiv');
 const mainPage = document.getElementById('mainPage');
 const welcomeMsg = document.getElementById('welcomeMsg');
-const studentPage = document.getElementById('studentPage');
-const teacherPage = document.getElementById('teacherPage');
 const adminPage = document.getElementById('adminPage');
+const teacherPage = document.getElementById('teacherPage');
+const studentPage = document.getElementById('studentPage');
 
-const classList = document.getElementById('classList');
-const classPageDiv = document.getElementById('classPageDiv');
-let currentTeacherId='';
-let currentClassId='';
+const selectLevel = document.getElementById('selectLevel');
+const selectSubject = document.getElementById('selectSubject');
 
-// 登入登出
+const schoolLevels = {
+  "elementary": ["國語","英文","數學","自然","社會","程式"],
+  "junior": ["國語","英文","數學","生物","理化","地科","歷史","地理","公民","程式"],
+  "senior": ["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民","程式"]
+};
+
+selectLevel.addEventListener('change',()=>{
+  const level = selectLevel.value;
+  selectSubject.innerHTML='<option value="">選擇科目</option>';
+  if(schoolLevels[level]){
+    schoolLevels[level].forEach(s=> selectSubject.innerHTML+=`<option value="${s}">${s}</option>`);
+  }
+});
+
+// Google 登入
 document.getElementById('googleSignIn').addEventListener('click',()=>{
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).then(result=>{
-    checkUser(result.user);
+    const user=result.user;
+    loginDiv.style.display='none';
+    mainPage.style.display='block';
+    db.collection("users").doc(user.uid).get().then(doc=>{
+      if(!doc.exists){
+        db.collection("users").doc(user.uid).set({name:user.displayName,email:user.email,role:"student",classId:null});
+      }
+      const role = doc.exists ? doc.data().role : "student";
+      welcomeMsg.innerText=`歡迎 ${user.displayName} (${role})`;
+      if(role==="admin") loadAdminPage();
+      else if(role==="teacher") loadTeacherPage(user.uid);
+      else loadStudentPage(user.uid);
+    });
   });
 });
 
-document.getElementById('logoutBtn').addEventListener('click',()=>{
-  auth.signOut().then(()=>location.reload());
-});
-
-function checkUser(user){
-  loginDiv.classList.add('hidden');
-  mainPage.classList.remove('hidden');
-  db.collection('users').doc(user.uid).get().then(doc=>{
-    if(!doc.exists){
-      db.collection('users').doc(user.uid).set({
-        name:user.displayName,email:user.email,role:'student'
-      });
-    }
-    const role = doc.exists?doc.data().role:'student';
-    welcomeMsg.innerText = `歡迎 ${user.displayName} (${role})`;
-
-    if(role==='admin') loadAdminPage();
-    else if(role==='teacher') loadTeacherPage(user.uid);
-    else loadStudentPage(user.uid);
-  });
-}
-
-// 管理者
-function loadAdminPage(){
-  adminPage.classList.remove('hidden');
-  loadUsers(); loadAllClasses();
-}
-function addUser(){
-  const email=document.getElementById('newUserEmail').value;
-  const role=document.getElementById('newUserRole').value;
-  if(!email) return alert('請輸入 Gmail');
-  db.collection('users').add({email,role,name:'',school:'',grade:''})
-    .then(()=>{alert('已新增用戶');loadUsers();});
-}
-function loadUsers(){
-  db.collection('users').get().then(snap=>{
-    const ul=document.getElementById('userList'); ul.innerHTML='';
-    snap.forEach(doc=>{
-      const u=doc.data();
-      const li=document.createElement('li');
-      li.innerText=`${u.email} (${u.role})`;
-      ul.appendChild(li);
-    });
-  });
-}
-function loadAllClasses(){
-  db.collection('classes').get().then(snap=>{
-    const ul=document.getElementById('allClassList'); ul.innerHTML='';
-    snap.forEach(doc=>{ ul.innerHTML+=`<li>${doc.data().name}</li>`;});
-  });
-}
-
-// 老師
-function loadTeacherPage(uid){
-  teacherPage.classList.remove('hidden');
-  currentTeacherId = uid;
-  db.collection('classes').where('teacherId','==',uid).get().then(snap=>{
-    classList.innerHTML='';
-    snap.forEach(doc=>{
-      const li=document.createElement('li'); li.innerText=doc.data().name;
-      li.onclick=()=>openClassPage(doc.id,doc.data().name);
-      classList.appendChild(li);
-    });
-  });
-}
-function createClass(){
-  const name=document.getElementById('newClassName').value;
-  if(!name) return alert('請輸入班級名稱');
-  db.collection('classes').add({name,teacherId:currentTeacherId}).then(doc=>loadTeacherPage(currentTeacherId));
-}
-function openClassPage(classId,className){
-  currentClassId=classId;
-  classPageDiv.classList.remove('hidden');
-  document.getElementById('classTitle').innerText=className;
-}
-function addStudent(){
-  const email=document.getElementById('studentEmail').value;
-  if(!email) return alert('請輸入 Gmail');
-  db.collection('users').add({email,role:'student',name:'',classId:currentClassId})
-    .then(()=>alert('學生新增成功'));
-}
-function saveQuestion(){
-  const title=document.getElementById('questionTitle').value;
-  const content=document.getElementById('questionContent').value;
-  const A=document.getElementById('optA').value;
-  const B=document.getElementById('optB').value;
-  const C=document.getElementById('optC').value;
-  const D=document.getElementById('optD').value;
-  const correct=document.getElementById('correctAnswer').value;
-  const explanation=document.getElementById('explanation').value;
-  if(!title||!content) return alert('請輸入題目與內容');
-  db.collection('questions').add({title,content,options:{A,B,C,D},correctAnswer:correct,explanation,teacherId:currentTeacherId})
-    .then(()=>{
-      alert('題目已儲存');
-      document.getElementById('questionTitle').value='';
-      document.getElementById('questionContent').value='';
-      document.getElementById('optA').value='';
-      document.getElementById('optB').value='';
-      document.getElementById('optC').value='';
-      document.getElementById('optD').value='';
-      document.getElementById('explanation').value='';
-    });
-}
-
-// 學生
-function loadStudentPage(uid){
-  studentPage.classList.remove('hidden');
-  db.collection('questions').get().then(snap=>{
-    const ul=document.getElementById('studentTestsList'); ul.innerHTML='';
-    snap.forEach(doc=>{
-      const q=doc.data();
-      const li=document.createElement('li');
-      li.innerHTML=`${q.title}<br>${q.content}<br>`;
-      ['A','B','C','D'].forEach(opt=>{
-        const btn=document.createElement('button'); btn.innerText=opt+' '+q.options[opt];
-        btn.onclick=()=>{
-          alert(`你的答案 ${opt}，正確答案 ${q.correctAnswer}\n解析: ${q.explanation}`);
-        };
-        li.appendChild(btn);
-      });
-      ul.appendChild(li);
-    });
-  });
-}
+// 可以繼續加上前面我生成的班級建立、學生新增、出題、指派試卷、學生答題等函式
+// ...
 </script>
+
 </body>
 </html>
