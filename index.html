@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClassQuest AIlead / Likedu 系統</title>
+<title>ClassQuest AIlead / Likedu 完整系統</title>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
 <style>
 body{font-family:"Segoe UI",sans-serif;background:#f5f6fa;display:flex;justify-content:center;padding:20px;}
-.card{background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.1);width:720px;padding:30px;text-align:center;margin-bottom:20px;}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.1);width:800px;padding:30px;text-align:center;margin-bottom:20px;}
 button{padding:10px;margin:5px;border:none;border-radius:8px;background:#4285F4;color:#fff;cursor:pointer;font-size:16px;}
 button:hover{background:#3367D6;}
 input,select,textarea{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
@@ -24,6 +24,11 @@ textarea{resize:none;}
 .option-btn{margin-top:5px;width:48%;margin-right:2%;}
 .correct{color:green;font-weight:bold;}
 .wrong{color:red;font-weight:bold;}
+.progress-bar{height:20px;background:#ddd;border-radius:10px;overflow:hidden;margin:10px 0;}
+.progress-fill{height:100%;background:#4caf50;width:0;}
+.class-card{border:1px solid #ccc;border-radius:12px;padding:15px;margin:10px;display:inline-block;width:200px;vertical-align:top;cursor:pointer;background:#f9f9f9;}
+.class-card:hover{background:#e8e8e8;}
+.student-card{border:1px solid #ccc;border-radius:12px;padding:10px;margin:5px;background:#fefefe;}
 </style>
 </head>
 <body>
@@ -79,6 +84,7 @@ loginBtn.addEventListener("click", async ()=>{
     }
   }catch(e){alert("登入失敗："+e.message);}
 });
+
 // 登出
 logoutBtn.addEventListener("click", async ()=>{await signOut(auth);});
 
@@ -130,7 +136,8 @@ async function renderTeacherUI(user){
     <select id="correctAnswer">
       <option value="">正確答案</option>
       <option value="A">A</option><option value="B">B</option>
-      <option value="C">C</option><option value="D">D</option>
+      <option value="C">C</option>
+      <option value="D">D</option>
     </select>
     <textarea id="explanation" rows="2" placeholder="解釋"></textarea>
     <button id="addQuestionBtn">出題</button>
@@ -245,18 +252,22 @@ async function renderStudentUI(user){
   tabContent.innerHTML=`
   <div class="section">
     <h3>可作答題目</h3>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     <ul id="quizList"></ul>
     <button id="submitBtn">完成試卷並提交</button>
   </div>`;
   const ul=document.getElementById("quizList");
+  const progressFill=document.getElementById("progressFill");
   const aSnap=await getDocs(query(collection(db,"answers"),where("studentId","==",user.email)));
   const myAnswers=aSnap.docs;
+
+  let answered=0;
 
   for(const docAns of myAnswers){
     const qDoc=await getDoc(doc(db,"questions",docAns.data().questionId));
     const q=qDoc.data();
     const li=document.createElement("li");
-    li.innerHTML=`${q.content}<br>
+    li.innerHTML=`<b>${q.content}</b><br>
       <button class="option-btn">A:${q.optA}</button>
       <button class="option-btn">B:${q.optB}</button>
       <button class="option-btn">C:${q.optC}</button>
@@ -264,12 +275,10 @@ async function renderStudentUI(user){
     const buttons=li.querySelectorAll("button.option-btn");
     buttons.forEach(btn=>{
       btn.onclick=async ()=>{
-        await setDoc(doc(db,"answers",docAns.id),{
-          ...docAns.data(),
-          selected:btn.textContent[0],
-          correct:null
-        });
-        buttons.forEach(b=>b.disabled=true);
+        await setDoc(doc(db,"answers",docAns.id),{selected:btn.textContent[0],correct:(btn.textContent[0]===q.correctAnswer)}, {merge:true});
+        answered++;
+        progressFill.style.width=`${(answered/myAnswers.length)*100}%`;
+        btn.style.background="#999"; btn.disabled=true;
       };
     });
     ul.appendChild(li);
@@ -277,20 +286,12 @@ async function renderStudentUI(user){
 
   document.getElementById("submitBtn").onclick=async ()=>{
     let correctCount=0;
-    for(const docAns of myAnswers){
-      const qDoc=await getDoc(doc(db,"questions",docAns.data().questionId));
-      const q=qDoc.data();
-      const ansSnap = await getDoc(doc(db,"answers",docAns.id));
-      const selected = ansSnap.data().selected;
-      const isCorrect = selected===q.correctAnswer;
-      if(isCorrect) correctCount++;
-      await setDoc(doc(db,"answers",docAns.id),{...docAns.data(),correct:isCorrect});
-    }
-    const total=myAnswers.length;
-    const score=(100/total)*correctCount;
-    alert(`試卷完成！\n答對率:${(correctCount/total*100).toFixed(1)}%\n分數:${score.toFixed(1)}`);
+    myAnswers.forEach(a=>{if(a.data().correct) correctCount++;});
+    const score=(15/myAnswers.length)*correctCount;
+    alert(`完成！答對率 ${(correctCount/myAnswers.length*100).toFixed(1)}%，分數 ${score.toFixed(1)}分`);
   };
 }
+
 </script>
 </body>
 </html>
