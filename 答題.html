@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>答題系統</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>答題系統</h1>
+
+  <!-- Google 登入按鈕 -->
+  <div id="loginDiv">
+    <button id="googleSignIn">使用 Google 登入</button>
+  </div>
+
+  <!-- 主頁面 -->
+  <div id="mainPage" style="display:none;">
+    <h2 id="welcomeMsg"></h2>
+    
+    <!-- 學生專用 -->
+    <div id="studentPage" style="display:none;">
+      <h3>你的試卷</h3>
+      <ul id="studentTestsList"></ul>
+    </div>
+
+    <!-- 老師專用 -->
+    <div id="teacherPage" style="display:none;">
+      <h3>班級管理</h3>
+      <button onclick="showCreateClass()">建立班級</button>
+      <ul id="classList"></ul>
+
+      <div id="createClassDiv" style="display:none;">
+        <input type="text" id="newClassName" placeholder="班級名稱">
+        <button onclick="createClass()">建立</button>
+      </div>
+
+      <div id="classPageDiv" style="display:none;">
+        <h4 id="classTitle"></h4>
+        <input type="text" id="studentName" placeholder="學生姓名">
+        <button onclick="addStudent()">新增學生</button>
+
+        <h4>出題系統</h4>
+        <input type="text" id="questionTitle" placeholder="題目名稱">
+        <textarea id="questionContent" placeholder="題目內容"></textarea>
+        <select id="questionTarget">
+          <option value="all">全班</option>
+          <option value="individual">個人</option>
+        </select>
+        <select id="saveLocation">
+          <option value="elementary_chinese">國小-國語</option>
+          <option value="elementary_english">國小-英文</option>
+          <option value="elementary_math">國小-數學</option>
+          <option value="junior_chinese">國中-國語</option>
+          <option value="junior_english">國中-英文</option>
+          <option value="junior_math">國中-數學</option>
+          <option value="senior_chinese">高中-國語</option>
+          <option value="senior_english">高中-英文</option>
+          <option value="senior_math">高中-數學</option>
+        </select>
+        <button onclick="saveQuestion()">儲存題目</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Firebase 配置
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const loginDiv = document.getElementById('loginDiv');
+  const mainPage = document.getElementById('mainPage');
+  const welcomeMsg = document.getElementById('welcomeMsg');
+  const studentPage = document.getElementById('studentPage');
+  const teacherPage = document.getElementById('teacherPage');
+  const classList = document.getElementById('classList');
+
+  // Google 登入
+  document.getElementById('googleSignIn').addEventListener('click', () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).then(result => {
+      const user = result.user;
+      checkUserRole(user.email);
+    });
+  });
+
+  // 模擬判斷身分
+  function checkUserRole(email) {
+    loginDiv.style.display = "none";
+    mainPage.style.display = "block";
+    welcomeMsg.innerText = `歡迎 ${email}`;
+
+    if(email === "chianghansen0302@gmail.com"){
+      // 管理者
+      alert("登入身分: 管理者");
+      // 這裡可擴充管理者功能
+    } else if(email.includes("teacher")){
+      teacherPage.style.display = "block";
+      loadClasses();
+    } else {
+      studentPage.style.display = "block";
+      loadStudentTests(email);
+    }
+  }
+
+  // 學生頁面範例
+  function loadStudentTests(email) {
+    const testList = ["國語測驗1", "數學小考"];
+    const ul = document.getElementById("studentTestsList");
+    ul.innerHTML = "";
+    testList.forEach(test => {
+      const li = document.createElement("li");
+      li.innerText = test;
+      ul.appendChild(li);
+    });
+  }
+
+  // 老師頁面範例
+  function showCreateClass() {
+    document.getElementById('createClassDiv').style.display = 'block';
+  }
+
+  function createClass() {
+    const className = document.getElementById('newClassName').value;
+    if(!className) return alert("請輸入班級名稱");
+    const li = document.createElement("li");
+    li.innerText = className;
+    li.onclick = () => openClassPage(className);
+    classList.appendChild(li);
+    document.getElementById('createClassDiv').style.display = 'none';
+  }
+
+  function loadClasses() {
+    // 可連接資料庫讀取班級列表
+    classList.innerHTML = "";
+    const exampleClasses = ["一班", "二班"];
+    exampleClasses.forEach(cls => {
+      const li = document.createElement("li");
+      li.innerText = cls;
+      li.onclick = () => openClassPage(cls);
+      classList.appendChild(li);
+    });
+  }
+
+  function openClassPage(className) {
+    document.getElementById('classPageDiv').style.display = 'block';
+    document.getElementById('classTitle').innerText = className;
+  }
+
+  function addStudent() {
+    const name = document.getElementById('studentName').value;
+    if(!name) return alert("請輸入學生姓名");
+    alert(`學生 ${name} 已新增`);
+    document.getElementById('studentName').value = '';
+  }
+
+  function saveQuestion() {
+    const title = document.getElementById('questionTitle').value;
+    const content = document.getElementById('questionContent').value;
+    const target = document.getElementById('questionTarget').value;
+    const location = document.getElementById('saveLocation').value;
+
+    if(!title || !content) return alert("請輸入題目與內容");
+
+    db.collection(location).add({
+      title: title,
+      content: content,
+      target: target,
+      timestamp: Date.now()
+    }).then(() => alert("題目已儲存"))
+    .catch(err => alert("儲存失敗: " + err));
+  }
+</script>
+</body>
+</html>
