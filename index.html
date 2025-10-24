@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClassQuest 老師系統</title>
+<title>ClassQuest 選擇題系統</title>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
 <style>
-body {font-family:"Segoe UI",sans-serif;background:#f5f6fa;display:flex;justify-content:center;padding:30px 0;}
-.card {background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.1);width:480px;padding:30px;margin:15px auto;text-align:center;}
-button {width:100%;padding:10px;margin-top:10px;border:none;border-radius:8px;background:#4285F4;color:#fff;cursor:pointer;font-size:16px;}
+body{font-family:"Segoe UI",sans-serif;background:#f5f6fa;display:flex;justify-content:center;padding:20px;}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.1);width:480px;padding:30px;text-align:center;margin-bottom:20px;}
+button{width:100%;padding:10px;margin-top:10px;border:none;border-radius:8px;background:#4285F4;color:#fff;cursor:pointer;font-size:16px;}
 button:hover{background:#3367D6;}
 input,select,textarea{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
 ul{list-style:none;padding:0;}
@@ -19,12 +19,15 @@ li:hover{background:#e2e6ea;}
 .hidden{display:none;}
 .section{margin-top:20px;text-align:left;}
 textarea{resize:none;}
+.option-btn{margin-top:5px;}
+.correct{color:green;font-weight:bold;}
+.wrong{color:red;font-weight:bold;}
 </style>
 </head>
 <body>
 
 <div class="card" id="loginCard">
-  <h1>ClassQuest 老師系統</h1>
+  <h1>ClassQuest 選擇題系統</h1>
   <button id="loginBtn">使用 Google 登入</button>
 </div>
 
@@ -46,8 +49,9 @@ const firebaseConfig = {
   projectId:"classquest-419e1",
   storageBucket:"classquest-419e1.firebasestorage.app",
   messagingSenderId:"18905423391",
-  appId:"1:18905423391:web:37c3aa41f021430f"
+  appId:"1:18905423391:web:37c3aa41f021430"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -68,7 +72,7 @@ loginBtn.addEventListener("click", async ()=>{
     const userRef = doc(db,"users",user.uid);
     const userSnap = await getDoc(userRef);
     if(!userSnap.exists()){
-      await setDoc(userRef,{email:user.email,name:user.displayName,role:"teacher"});
+      await setDoc(userRef,{email:user.email,name:user.displayName,role:"teacher",classId:null});
     }
   }catch(e){alert("登入失敗："+e.message);}
 });
@@ -104,26 +108,27 @@ async function renderTeacherUI(user){
       <input type="text" id="studentEmail" placeholder="學生 Gmail">
       <button id="addStudentBtn">新增學生</button>
       <ul id="studentList"></ul>
-      
+
       <div class="section">
-        <h4>指派試卷</h4>
-        <select id="levelSelect">
-          <option value="">選擇學段</option>
-          <option value="國小">國小</option>
-          <option value="國中">國中</option>
-          <option value="高中">高中</option>
+        <h4>新增選擇題</h4>
+        <textarea id="questionContent" rows="2" placeholder="題目內容"></textarea>
+        <input type="text" id="optA" placeholder="選項 A">
+        <input type="text" id="optB" placeholder="選項 B">
+        <input type="text" id="optC" placeholder="選項 C">
+        <input type="text" id="optD" placeholder="選項 D">
+        <select id="correctAnswer"><option value="">選擇正確答案</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
         </select>
-        <select id="subjectSelect"><option value="">選擇科目</option></select>
-        <input type="number" id="questionCount" placeholder="題數">
-        <button id="assignBtn">指派試卷</button>
+        <textarea id="explanation" rows="2" placeholder="解釋"></textarea>
+        <button id="addQuestionBtn">出題</button>
       </div>
 
       <div class="section">
-        <h4>新增題目</h4>
-        <textarea id="questionContent" rows="3" placeholder="題目內容"></textarea>
-        <input type="text" id="correctAnswer" placeholder="正確答案">
-        <textarea id="explanation" rows="2" placeholder="解釋"></textarea>
-        <button id="addQuestionBtn">出題</button>
+        <h4>學生作答</h4>
+        <ul id="studentQuizList"></ul>
       </div>
     </div>
   `;
@@ -157,6 +162,7 @@ async function renderTeacherUI(user){
     classSection.classList.remove("hidden");
     document.getElementById("classTitle").textContent=name;
     loadStudents();
+    loadStudentQuiz();
   }
 
   async function loadStudents(){
@@ -181,38 +187,62 @@ async function renderTeacherUI(user){
     loadStudents();
   };
 
-  document.getElementById("levelSelect").addEventListener("change",()=>{
-    const level=document.getElementById("levelSelect").value;
-    let subjects=[];
-    if(level==="國小") subjects=["國語","英文","數學","自然","社會"];
-    if(level==="國中") subjects=["國語","英文","數學","生物","理化","地科","歷史","地理","公民"];
-    if(level==="高中") subjects=["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民"];
-    document.getElementById("subjectSelect").innerHTML=`<option value="">選擇科目</option>`+subjects.map(s=>`<option value="${s}">${s}</option>`).join("");
-  });
-
   document.getElementById("addQuestionBtn").onclick=async ()=>{
     const content=document.getElementById("questionContent").value.trim();
-    const correct=document.getElementById("correctAnswer").value.trim();
+    const optA=document.getElementById("optA").value.trim();
+    const optB=document.getElementById("optB").value.trim();
+    const optC=document.getElementById("optC").value.trim();
+    const optD=document.getElementById("optD").value.trim();
+    const correct=document.getElementById("correctAnswer").value;
     const explanation=document.getElementById("explanation").value.trim();
-    if(!content||!correct||!explanation) return alert("請完整填寫題目、答案、解釋");
+    if(!content||!optA||!optB||!optC||!optD||!correct||!explanation) return alert("請完整填寫題目與選項");
     await addDoc(collection(db,"questions"),{
-      content,correctAnswer:correct,explanation,teacherId:user.uid,classId:currentClassId,
+      content,optA,optB,optC,optD,correctAnswer:correct,explanation,teacherId:user.uid,classId:currentClassId,
       timestamp:Date.now()
     });
     alert("題目出題成功！");
     document.getElementById("questionContent").value="";
+    document.getElementById("optA").value="";
+    document.getElementById("optB").value="";
+    document.getElementById("optC").value="";
+    document.getElementById("optD").value="";
     document.getElementById("correctAnswer").value="";
     document.getElementById("explanation").value="";
+    loadStudentQuiz();
   };
 
-  document.getElementById("assignBtn").onclick=async ()=>{
-    const level=document.getElementById("levelSelect").value;
-    const subject=document.getElementById("subjectSelect").value;
-    const count=parseInt(document.getElementById("questionCount").value);
-    if(!level||!subject||!count) return alert("請完整選擇範圍與題數");
-    alert(`已指派 ${count} 題 ${level} ${subject} 給班級`);
-    // 這裡可把題目隨機挑選 count 題儲存到 classId 對應學生試卷
-  };
+  async function loadStudentQuiz(){
+    const ul=document.getElementById("studentQuizList");
+    ul.innerHTML="";
+    const snapshot=await getDocs(query(collection(db,"questions"),where("classId","==",currentClassId)));
+    snapshot.forEach(docSnap=>{
+      const q=docSnap.data();
+      const li=document.createElement("li");
+      li.innerHTML=`<b>${q.content}</b><br>
+        <button class="option-btn">A: ${q.optA}</button>
+        <button class="option-btn">B: ${q.optB}</button>
+        <button class="option-btn">C: ${q.optC}</button>
+        <button class="option-btn">D: ${q.optD}</button>
+        <div class="hidden" id="explain-${docSnap.id}"></div>`;
+      ul.appendChild(li);
+
+      const btns=li.querySelectorAll(".option-btn");
+      btns.forEach(b=>{
+        b.addEventListener("click", ()=>{
+          const val=b.textContent.charAt(0);
+          const expDiv=document.getElementById(`explain-${docSnap.id}`);
+          if(val===q.correctAnswer){
+            expDiv.innerHTML=`✅ 正確答案: ${q.correctAnswer}<br>${q.explanation}`;
+            expDiv.className="correct";
+          }else{
+            expDiv.innerHTML=`❌ 正確答案: ${q.correctAnswer}<br>${q.explanation}`;
+            expDiv.className="wrong";
+          }
+          expDiv.classList.remove("hidden");
+        });
+      });
+    });
+  }
 
   loadClasses();
 }
