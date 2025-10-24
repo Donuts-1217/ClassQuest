@@ -10,9 +10,9 @@
 <style>
 body { font-family: Arial, sans-serif; display:flex; flex-direction:column; align-items:center; margin:0; padding:0; background:#f0f2f5;}
 h1,h2,h3,h4 { margin:5px 0;}
-#loginDiv, #mainPage { margin-top:50px; width:90%; max-width:800px; text-align:center;}
+#loginDiv, #mainPage { margin-top:50px; width:90%; max-width:900px; text-align:center;}
 button { padding:10px 20px; margin:5px; cursor:pointer;}
-input, select, textarea { padding:5px; margin:5px; width:90%;}
+input, select, textarea { padding:5px; margin:5px; width:90%; box-sizing:border-box;}
 .card { background:white; padding:15px; margin:10px 0; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.2);}
 ul { list-style:none; padding:0;}
 li { margin:5px 0; }
@@ -95,6 +95,7 @@ li { margin:5px 0; }
 </div>
 
 <script>
+// ---------- Firebase 設定 ----------
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -107,6 +108,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ---------- DOM 元素 ----------
 const loginDiv = document.getElementById('loginDiv');
 const mainPage = document.getElementById('mainPage');
 const welcomeMsg = document.getElementById('welcomeMsg');
@@ -117,12 +119,12 @@ const studentPage = document.getElementById('studentPage');
 const selectLevel = document.getElementById('selectLevel');
 const selectSubject = document.getElementById('selectSubject');
 
+// ---------- 學段與科目 ----------
 const schoolLevels = {
   "elementary": ["國語","英文","數學","自然","社會","程式"],
   "junior": ["國語","英文","數學","生物","理化","地科","歷史","地理","公民","程式"],
   "senior": ["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民","程式"]
 };
-
 selectLevel.addEventListener('change',()=>{
   const level = selectLevel.value;
   selectSubject.innerHTML='<option value="">選擇科目</option>';
@@ -131,7 +133,7 @@ selectLevel.addEventListener('change',()=>{
   }
 });
 
-// Google 登入
+// ---------- Google 登入 ----------
 document.getElementById('googleSignIn').addEventListener('click',()=>{
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).then(result=>{
@@ -151,8 +153,126 @@ document.getElementById('googleSignIn').addEventListener('click',()=>{
   });
 });
 
-// 可以繼續加上前面我生成的班級建立、學生新增、出題、指派試卷、學生答題等函式
-// ...
+// ---------- 管理者功能 ----------
+function loadAdminPage(){
+  adminPage.style.display='block';
+  loadUsers();
+  loadAllClasses();
+}
+function addUser(){
+  const email=document.getElementById('newUserEmail').value;
+  const role=document.getElementById('newUserRole').value;
+  if(!email) return alert("請輸入 Gmail");
+  db.collection("users").add({email,role});
+  alert("已新增/設定角色");
+}
+function loadUsers(){
+  db.collection("users").get().then(snapshot=>{
+    const ul=document.getElementById('userList');
+    ul.innerHTML="";
+    snapshot.forEach(doc=>{
+      const u=doc.data();
+      ul.innerHTML+=`<li>${u.email} - ${u.role}</li>`;
+    });
+  });
+}
+function loadAllClasses(){
+  db.collection("classes").get().then(snapshot=>{
+    const ul=document.getElementById('allClassList');
+    ul.innerHTML="";
+    snapshot.forEach(doc=> ul.innerHTML+=`<li>${doc.data().name}</li>`);
+  });
+}
+
+// ---------- 老師功能 ----------
+let currentTeacherId="", currentClassId="";
+const classList=document.getElementById('classList');
+const createClassDiv=document.getElementById('createClassDiv');
+const classPageDiv=document.getElementById('classPageDiv');
+
+function loadTeacherPage(uid){
+  teacherPage.style.display='block';
+  currentTeacherId=uid;
+  db.collection("classes").where("teacherId","==",uid).get().then(snapshot=>{
+    classList.innerHTML="";
+    snapshot.forEach(doc=>{
+      const li=document.createElement("li");
+      li.innerText=doc.data().name;
+      li.onclick=()=>openClassPage(doc.id,doc.data().name);
+      classList.appendChild(li);
+    });
+  });
+}
+
+function showCreateClass(){ createClassDiv.style.display='block'; }
+function createClass(){
+  const name=document.getElementById('newClassName').value;
+  if(!name) return alert("請輸入班級名稱");
+  db.collection("classes").add({name,teacherId:currentTeacherId}).then(doc=>{
+    openClassPage(doc.id,name);
+  });
+  createClassDiv.style.display='none';
+}
+function openClassPage(classId,className){
+  currentClassId=classId;
+  classPageDiv.style.display='block';
+  document.getElementById('classTitle').innerText=className;
+}
+function addStudent(){
+  const email=document.getElementById('studentEmail').value;
+  if(!email) return alert("請輸入學生 Gmail");
+  db.collection("users").add({email,role:"student",classId:currentClassId});
+  alert("已新增學生");
+}
+function saveQuestion(){
+  const title=document.getElementById('questionTitle').value;
+  const content=document.getElementById('questionContent').value;
+  const A=document.getElementById('optionA').value;
+  const B=document.getElementById('optionB').value;
+  const C=document.getElementById('optionC').value;
+  const D=document.getElementById('optionD').value;
+  const correct=document.getElementById('correctOption').value;
+  const explanation=document.getElementById('explanation').value;
+  const level=selectLevel.value;
+  const subject=selectSubject.value;
+  if(!title||!content||!A||!B||!C||!D||!correct||!level||!subject) return alert("請完整填寫");
+  db.collection("questions").add({
+    teacherId:currentTeacherId, level, subject, title, content,
+    options:{A,B,C,D}, correct, explanation, timestamp:Date.now()
+  });
+  // 清空輸入欄
+  document.getElementById('questionTitle').value="";
+  document.getElementById('questionContent').value="";
+  document.getElementById('optionA').value="";
+  document.getElementById('optionB').value="";
+  document.getElementById('optionC').value="";
+  document.getElementById('optionD').value="";
+  document.getElementById('explanation').value="";
+  alert("題目已儲存");
+}
+
+// ---------- 學生功能 ----------
+function loadStudentPage(uid){
+  studentPage.style.display="block";
+  db.collection("questions").get().then(snapshot=>{
+    const ul=document.getElementById('studentTestsList');
+    ul.innerHTML="";
+    snapshot.forEach(doc=>{
+      const q=doc.data();
+      const li=document.createElement("li");
+      li.innerHTML=`<b>${q.title}</b> (${q.subject})<br>
+        <button onclick="submitAnswer('${uid}','${doc.id}','A')">A</button>
+        <button onclick="submitAnswer('${uid}','${doc.id}','B')">B</button>
+        <button onclick="submitAnswer('${uid}','${doc.id}','C')">C</button>
+        <button onclick="submitAnswer('${uid}','${doc.id}','D')">D</button>`;
+      ul.appendChild(li);
+    });
+  });
+}
+function submitAnswer(studentId,questionId,selected){
+  db.collection("answers").add({studentId,questionId,selected,timestamp:Date.now()});
+  alert("已送出答案");
+}
 </script>
 
 </body>
