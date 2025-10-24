@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>ClassQuest</title>
+  <title>ClassQuest 教室系統</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
@@ -10,7 +10,7 @@
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
-      background: #f5f6fa;
+      background: #f0f2f5;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -22,8 +22,8 @@
       border-radius: 16px;
       padding: 30px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 420px;
       text-align: center;
-      width: 400px;
     }
     button {
       background: #4285F4;
@@ -38,201 +38,258 @@
       transition: 0.3s;
     }
     button:hover { background: #3367D6; }
-    input, select {
+    input, select, textarea {
       width: 100%;
       padding: 10px;
       margin: 5px 0;
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-    h1 { font-size: 26px; margin-bottom: 20px; }
     .hidden { display: none; }
     #logoutBtn { background: #e74c3c; }
     #logoutBtn:hover { background: #c0392b; }
-    .section {
-      margin-top: 20px;
-      text-align: left;
-    }
+    .section { text-align: left; margin-top: 20px; }
+    ul { list-style: none; padding: 0; }
+    li { background: #f8f8f8; margin: 4px 0; padding: 8px; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
 
-  <!-- 登入畫面 -->
-  <div class="card" id="loginCard">
-    <h1>ClassQuest</h1>
-    <button id="loginBtn">使用 Google 登入</button>
-  </div>
+<div class="card" id="loginCard">
+  <h1>ClassQuest</h1>
+  <button id="loginBtn">使用 Google 登入</button>
+</div>
 
-  <!-- 主畫面 -->
-  <div class="card hidden" id="mainCard">
-    <h1 id="welcomeText"></h1>
-    <p id="roleText"></p>
-    <div id="contentArea"></div>
-    <button id="logoutBtn">登出</button>
-  </div>
+<div class="card hidden" id="mainCard">
+  <h2 id="welcomeText"></h2>
+  <p id="roleText"></p>
+  <div id="contentArea"></div>
+  <button id="logoutBtn">登出</button>
+</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-      authDomain: "classquest-419e1.firebaseapp.com",
-      projectId: "classquest-419e1",
-      storageBucket: "classquest-419e1.firebasestorage.app",
-      messagingSenderId: "18905423391",
-      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-      measurementId: "G-0H7STZJVXS"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+  authDomain: "classquest-419e1.firebaseapp.com",
+  projectId: "classquest-419e1",
+  storageBucket: "classquest-419e1.firebasestorage.app",
+  messagingSenderId: "18905423391",
+  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+  measurementId: "G-0H7STZJVXS"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const provider = new GoogleAuthProvider();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
-    const loginCard = document.getElementById("loginCard");
-    const mainCard = document.getElementById("mainCard");
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const welcomeText = document.getElementById("welcomeText");
-    const roleText = document.getElementById("roleText");
-    const contentArea = document.getElementById("contentArea");
+const loginCard = document.getElementById("loginCard");
+const mainCard = document.getElementById("mainCard");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const welcomeText = document.getElementById("welcomeText");
+const roleText = document.getElementById("roleText");
+const contentArea = document.getElementById("contentArea");
 
-    // 登入
-    loginBtn.addEventListener("click", async () => {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, { email: user.email, role: "student" });
-        }
-      } catch (e) {
-        alert("登入失敗：" + e.message);
+// 登入
+loginBtn.addEventListener("click", async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, { email: user.email, name: user.displayName, role: "student" });
+    }
+  } catch (e) {
+    alert("登入失敗：" + e.message);
+  }
+});
+
+// 登出
+logoutBtn.addEventListener("click", async () => { await signOut(auth); });
+
+// 狀態監聽
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    loginCard.classList.add("hidden");
+    mainCard.classList.remove("hidden");
+    welcomeText.textContent = `👋 歡迎，${user.displayName}`;
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    let role = "student";
+    if (userSnap.exists()) role = userSnap.data().role;
+    roleText.textContent = `您的身分：${role}`;
+    loadUI(role, user);
+  } else {
+    loginCard.classList.remove("hidden");
+    mainCard.classList.add("hidden");
+    contentArea.innerHTML = "";
+  }
+});
+
+async function loadUI(role, user) {
+  contentArea.innerHTML = "";
+  if (role === "admin") renderAdminUI();
+  if (role === "teacher") renderTeacherUI(user);
+  if (role === "student") renderStudentUI(user);
+}
+
+// ---------- 管理者 ----------
+function renderAdminUI() {
+  contentArea.innerHTML = `
+    <div class="section">
+      <h3>用戶管理</h3>
+      <input type="text" id="emailInput" placeholder="輸入 Gmail">
+      <select id="roleSelect">
+        <option value="student">學生</option>
+        <option value="teacher">老師</option>
+        <option value="admin">管理者</option>
+      </select>
+      <button id="setRoleBtn">設定</button>
+    </div>`;
+  document.getElementById("setRoleBtn").onclick = async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    const newRole = document.getElementById("roleSelect").value;
+    if (!email) return alert("請輸入 Gmail");
+    const usersSnap = await getDocs(collection(db, "users"));
+    let found = false;
+    for (const docSnap of usersSnap.docs) {
+      if (docSnap.data().email === email) {
+        await updateDoc(doc(db, "users", docSnap.id), { role: newRole });
+        alert("角色更新完成！");
+        found = true;
+        break;
       }
+    }
+    if (!found) alert("找不到該使用者");
+  };
+}
+
+// ---------- 老師 ----------
+async function renderTeacherUI(user) {
+  contentArea.innerHTML = `
+    <div class="section">
+      <h3>班級管理</h3>
+      <input type="text" id="className" placeholder="輸入班級名稱">
+      <button id="createClassBtn">建立班級</button>
+      <ul id="classList"></ul>
+    </div>
+    <div id="classPage" class="section hidden">
+      <h3 id="classTitle"></h3>
+      <input type="text" id="studentName" placeholder="新增學生姓名">
+      <button id="addStudentBtn">新增學生</button>
+      <ul id="studentList"></ul>
+      <hr>
+      <h4>出題給學生</h4>
+      <select id="levelSelect">
+        <option value="">選擇學段</option>
+        <option value="國小">國小</option>
+        <option value="國中">國中</option>
+        <option value="高中">高中</option>
+      </select>
+      <select id="subjectSelect"><option value="">選擇科目</option></select>
+      <textarea id="questionContent" rows="3" placeholder="輸入題目內容"></textarea>
+      <button id="addQuestionBtn">出題</button>
+    </div>
+  `;
+
+  const classList = document.getElementById("classList");
+  const classPage = document.getElementById("classPage");
+  const subjectSelect = document.getElementById("subjectSelect");
+  const levelSelect = document.getElementById("levelSelect");
+  let currentClassId = "";
+
+  // 學段改變時更新科目
+  levelSelect.addEventListener("change", () => {
+    const level = levelSelect.value;
+    let subjects = [];
+    if (level === "國小") subjects = ["國語","英文","數學","自然","社會"];
+    if (level === "國中") subjects = ["國語","英文","數學","生物","理化","地科","歷史","地理","公民"];
+    if (level === "高中") subjects = ["國語","英文","數學","生物","物理","化學","地科","歷史","地理","公民"];
+    subjectSelect.innerHTML = `<option value="">選擇科目</option>` + subjects.map(s=>`<option value="${s}">${s}</option>`).join("");
+  });
+
+  // 建立班級
+  document.getElementById("createClassBtn").onclick = async () => {
+    const name = document.getElementById("className").value.trim();
+    if (!name) return alert("請輸入班級名稱");
+    const docRef = await addDoc(collection(db, "classes"), { name, teacherId: user.uid });
+    alert("班級建立成功！");
+    loadClasses();
+  };
+
+  // 載入班級列表
+  async function loadClasses() {
+    classList.innerHTML = "";
+    const q = query(collection(db, "classes"), where("teacherId", "==", user.uid));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(docSnap => {
+      const li = document.createElement("li");
+      li.textContent = docSnap.data().name;
+      li.onclick = () => openClass(docSnap.id, docSnap.data().name);
+      classList.appendChild(li);
     });
+  }
 
-    // 登出
-    logoutBtn.addEventListener("click", async () => { await signOut(auth); });
+  // 開啟班級頁面
+  async function openClass(classId, className) {
+    currentClassId = classId;
+    classPage.classList.remove("hidden");
+    document.getElementById("classTitle").textContent = `📘 ${className}`;
+    loadStudents();
+  }
 
-    // 狀態監聽
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        loginCard.classList.add("hidden");
-        mainCard.classList.remove("hidden");
-        welcomeText.textContent = `👋 歡迎，${user.displayName}`;
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        let role = "student";
-        if (userSnap.exists()) role = userSnap.data().role;
-        roleText.textContent = `您的身分：${role}`;
-        loadUI(role, user);
-      } else {
-        loginCard.classList.remove("hidden");
-        mainCard.classList.add("hidden");
-        contentArea.innerHTML = "";
-      }
+  // 新增學生
+  document.getElementById("addStudentBtn").onclick = async () => {
+    const name = document.getElementById("studentName").value.trim();
+    if (!name) return alert("請輸入學生姓名");
+    await addDoc(collection(db, "students"), { name, classId: currentClassId });
+    loadStudents();
+  };
+
+  // 載入學生
+  async function loadStudents() {
+    const studentList = document.getElementById("studentList");
+    studentList.innerHTML = "";
+    const q = query(collection(db, "students"), where("classId", "==", currentClassId));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(docSnap => {
+      const li = document.createElement("li");
+      li.textContent = docSnap.data().name;
+      studentList.appendChild(li);
     });
+  }
 
-    // 根據身分載入介面
-    async function loadUI(role, user) {
-      contentArea.innerHTML = "";
-      if (role === "admin") renderAdminUI();
-      if (role === "teacher") renderTeacherUI(user);
-      if (role === "student") renderStudentUI();
-    }
+  // 出題
+  document.getElementById("addQuestionBtn").onclick = async () => {
+    const level = levelSelect.value;
+    const subject = subjectSelect.value;
+    const content = document.getElementById("questionContent").value.trim();
+    if (!level || !subject || !content || !currentClassId) return alert("請完整填寫");
+    await addDoc(collection(db, "questions"), { level, subject, content, classId: currentClassId, teacherId: user.uid, timestamp: Date.now() });
+    alert("出題成功！");
+  };
 
-    // 管理者介面
-    function renderAdminUI() {
-      contentArea.innerHTML = `
-        <div class="section">
-          <h3>用戶管理</h3>
-          <input type="text" id="emailInput" placeholder="輸入 Gmail">
-          <select id="roleSelect">
-            <option value="student">學生</option>
-            <option value="teacher">老師</option>
-            <option value="admin">管理者</option>
-          </select>
-          <button id="setRoleBtn">設定</button>
-        </div>`;
-      document.getElementById("setRoleBtn").onclick = async () => {
-        const email = document.getElementById("emailInput").value.trim();
-        const newRole = document.getElementById("roleSelect").value;
-        if (!email) return alert("請輸入 Gmail");
-        const usersSnap = await getDocs(collection(db, "users"));
-        let found = false;
-        for (const docSnap of usersSnap.docs) {
-          if (docSnap.data().email === email) {
-            await updateDoc(doc(db, "users", docSnap.id), { role: newRole });
-            alert("已更新角色");
-            found = true;
-            break;
-          }
-        }
-        if (!found) alert("找不到該使用者");
-      };
-    }
+  loadClasses();
+}
 
-    // 老師介面
-    function renderTeacherUI(user) {
-      contentArea.innerHTML = `
-        <div class="section">
-          <h3>建立班級</h3>
-          <input type="text" id="className" placeholder="班級名稱">
-          <button id="createClassBtn">建立</button>
-        </div>
-        <div class="section">
-          <h3>出題系統</h3>
-          <select id="levelSelect">
-            <option value="">選擇學段</option>
-            <option value="小學">國小</option>
-            <option value="國中">國中</option>
-            <option value="高中">高中</option>
-          </select>
-          <select id="subjectSelect">
-            <option value="">選擇科目</option>
-          </select>
-          <textarea id="questionContent" rows="4" placeholder="輸入題目內容"></textarea>
-          <button id="addQuestionBtn">出題</button>
-        </div>
-      `;
-
-      const subjectSelect = document.getElementById("subjectSelect");
-      const levelSelect = document.getElementById("levelSelect");
-      levelSelect.addEventListener("change", () => {
-        const level = levelSelect.value;
-        let subjects = [];
-        if (level === "小學") subjects = ["國語", "英文", "數學", "自然", "社會"];
-        if (level === "國中") subjects = ["國語", "英文", "數學", "生物", "理化", "地科", "歷史", "地理", "公民"];
-        if (level === "高中") subjects = ["國語", "英文", "數學", "生物", "物理", "化學", "地科", "歷史", "地理", "公民"];
-        subjectSelect.innerHTML = `<option value="">選擇科目</option>` + subjects.map(s => `<option value="${s}">${s}</option>`).join("");
-      });
-
-      // 建立班級
-      document.getElementById("createClassBtn").onclick = async () => {
-        const name = document.getElementById("className").value.trim();
-        if (!name) return alert("請輸入班級名稱");
-        await addDoc(collection(db, "classes"), { name, teacher: user.uid });
-        alert("班級建立成功！");
-      };
-
-      // 出題
-      document.getElementById("addQuestionBtn").onclick = async () => {
-        const level = levelSelect.value;
-        const subject = subjectSelect.value;
-        const content = document.getElementById("questionContent").value.trim();
-        if (!level || !subject || !content) return alert("請完整填寫");
-        await addDoc(collection(db, "questions"), { level, subject, content, teacher: user.uid });
-        alert("出題成功！");
-      };
-    }
-
-    // 學生介面
-    function renderStudentUI() {
-      contentArea.innerHTML = `<div class="section"><h3>待完成試卷</h3><p>老師出的題目將顯示在此。</p></div>`;
-    }
-  </script>
+// ---------- 學生 ----------
+async function renderStudentUI(user) {
+  contentArea.innerHTML = `<div class="section"><h3>你的試卷</h3><ul id="testList"></ul></div>`;
+  const testList = document.getElementById("testList");
+  const q = query(collection(db, "questions"));
+  const snapshot = await getDocs(q);
+  snapshot.forEach(docSnap => {
+    const li = document.createElement("li");
+    li.textContent = `${docSnap.data().level} ${docSnap.data().subject}：${docSnap.data().content}`;
+    testList.appendChild(li);
+  });
+}
+</script>
 </body>
 </html>
