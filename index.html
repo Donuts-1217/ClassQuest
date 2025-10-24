@@ -13,106 +13,121 @@ body {
   font-family: "Noto Sans TC", sans-serif;
   background: #f4f6f8;
   margin:0;
-  padding:20px;
+  padding:0;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  min-height:100vh;
 }
-h1,h2,h3,h4 { color: #333; margin-bottom:10px; }
+.container {
+  width: 95%;
+  max-width: 900px;
+  margin-top:30px;
+}
+h1,h2,h3,h4 { color:#333; margin-bottom:10px; }
 button {
-  background-color: #4CAF50; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;
+  background-color:#4CAF50;
+  color:white;
+  border:none;
+  padding:6px 12px;
+  border-radius:4px;
+  cursor:pointer;
 }
-button:hover { background-color: #45a049; }
+button:hover { background-color:#45a049; }
 input, select, textarea {
   padding:6px; border-radius:4px; border:1px solid #ccc; margin-right:5px;
 }
+textarea { resize: vertical; width: 100%; min-height:50px; }
 .card {
-  background:white; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.1); padding:15px; margin-bottom:15px;
+  background:white; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.1); padding:20px; margin-bottom:20px;
 }
-.list-item {
-  background:#fff; padding:10px; margin:5px 0; border-radius:4px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.08);
-}
-.flex-row { display:flex; align-items:center; margin-bottom:10px; }
-.flex-row > * { margin-right:10px; }
+.flex-row { display:flex; align-items:center; margin-bottom:10px; flex-wrap: wrap; }
+.flex-row > * { margin-right:10px; margin-bottom:5px; }
+.list-item { background:#fff; padding:10px; margin:5px 0; border-radius:4px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 </style>
 </head>
 <body>
+<div class="container">
+  <h1>QuizNova 答題系統</h1>
 
-<h1>QuizNova 答題系統</h1>
-
-<div id="loginDiv" class="card">
-  <button id="googleSignIn">使用 Google 登入</button>
-</div>
-
-<div id="mainPage" style="display:none;">
-  <h2 id="welcomeMsg"></h2>
-
-  <!-- 管理者頁面 -->
-  <div id="adminPage" class="card" style="display:none;">
-    <h3>用戶管理</h3>
-    <div class="flex-row">
-      <input type="text" id="newUserName" placeholder="姓名">
-      <input type="email" id="newUserEmail" placeholder="Gmail">
-      <select id="newUserRole">
-        <option value="student">學生</option>
-        <option value="teacher">老師</option>
-        <option value="admin">管理者</option>
-      </select>
-      <button onclick="addNewUser()">新增</button>
-    </div>
-
-    <h4>已有用戶</h4>
-    <div id="userList"></div>
-
-    <h3>所有班級</h3>
-    <div id="allClassList"></div>
+  <div id="loginDiv" class="card">
+    <button id="googleSignIn">使用 Google 登入</button>
   </div>
 
-  <!-- 老師頁面 -->
-  <div id="teacherPage" class="card" style="display:none;">
-    <h3>班級管理</h3>
-    <button onclick="showCreateClass()">建立班級</button>
-    <div id="classList"></div>
+  <div id="mainPage" style="display:none;">
+    <h2 id="welcomeMsg"></h2>
 
-    <div id="createClassDiv" class="card" style="display:none;">
-      <input type="text" id="newClassName" placeholder="班級名稱">
-      <button onclick="createClass()">建立</button>
+    <!-- 管理者頁面 -->
+    <div id="adminPage" class="card" style="display:none;">
+      <h3>用戶管理</h3>
+      <div class="flex-row">
+        <input type="text" id="newUserName" placeholder="姓名">
+        <input type="email" id="newUserEmail" placeholder="Gmail">
+        <select id="newUserRole">
+          <option value="student">學生</option>
+          <option value="teacher">老師</option>
+          <option value="admin">管理者</option>
+        </select>
+        <button onclick="addNewUser()">新增</button>
+      </div>
+      <h4>已有用戶</h4>
+      <div id="userList"></div>
+
+      <h3>所有班級</h3>
+      <div id="allClassList"></div>
     </div>
 
-    <div id="classPageDiv" class="card" style="display:none;">
-      <h4 id="classTitle"></h4>
-      <div class="flex-row">
-        <input type="text" id="studentName" placeholder="學生姓名">
-        <button onclick="addStudent()">新增學生</button>
+    <!-- 老師頁面 -->
+    <div id="teacherPage" class="card" style="display:none;">
+      <h3>班級管理</h3>
+      <button onclick="showCreateClass()">建立班級</button>
+      <div id="classList"></div>
+
+      <div id="createClassDiv" class="card" style="display:none;">
+        <input type="text" id="newClassName" placeholder="班級名稱">
+        <button onclick="createClass()">建立</button>
       </div>
 
-      <h4>出題系統</h4>
-      <div class="flex-row">
-        <input type="text" id="questionTitle" placeholder="題目名稱">
-        <textarea id="questionContent" placeholder="題目內容"></textarea>
-      </div>
-      <div class="flex-row">
-        <select id="questionTarget">
-          <option value="all">全班</option>
-          <option value="individual">個人</option>
-        </select>
-        <select id="saveLocation">
-          <option value="elementary_chinese">國小-國語</option>
-          <option value="elementary_english">國小-英文</option>
-          <option value="elementary_math">國小-數學</option>
-          <option value="junior_chinese">國中-國語</option>
-          <option value="junior_english">國中-英文</option>
-          <option value="junior_math">國中-數學</option>
-          <option value="senior_chinese">高中-國語</option>
-          <option value="senior_english">高中-英文</option>
-          <option value="senior_math">高中-數學</option>
-        </select>
-        <button onclick="saveQuestion()">儲存題目</button>
+      <div id="classPageDiv" class="card" style="display:none;">
+        <h4 id="classTitle"></h4>
+        <div class="flex-row">
+          <input type="text" id="studentName" placeholder="學生姓名">
+          <button onclick="addStudent()">新增學生</button>
+        </div>
+
+        <h4>出題系統</h4>
+        <div class="flex-row">
+          <input type="text" id="questionTitle" placeholder="題目名稱">
+        </div>
+        <div class="flex-row">
+          <textarea id="questionContent" placeholder="題目內容"></textarea>
+        </div>
+        <div class="flex-row">
+          <select id="questionTarget">
+            <option value="all">全班</option>
+            <option value="individual">個人</option>
+          </select>
+          <select id="saveLocation">
+            <option value="elementary_chinese">國小-國語</option>
+            <option value="elementary_english">國小-英文</option>
+            <option value="elementary_math">國小-數學</option>
+            <option value="junior_chinese">國中-國語</option>
+            <option value="junior_english">國中-英文</option>
+            <option value="junior_math">國中-數學</option>
+            <option value="senior_chinese">高中-國語</option>
+            <option value="senior_english">高中-英文</option>
+            <option value="senior_math">高中-數學</option>
+          </select>
+          <button onclick="saveQuestion()">儲存題目</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- 學生頁面 -->
-  <div id="studentPage" class="card" style="display:none;">
-    <h3>你的試卷</h3>
-    <div id="studentTestsList"></div>
+    <!-- 學生頁面 -->
+    <div id="studentPage" class="card" style="display:none;">
+      <h3>你的試卷</h3>
+      <div id="studentTestsList"></div>
+    </div>
   </div>
 </div>
 
@@ -141,7 +156,7 @@ document.getElementById('googleSignIn').addEventListener('click', () => {
   auth.signInWithPopup(provider).then(result => {
     const user = result.user;
     checkUser(user);
-  });
+  }).catch(err=>alert(err.message));
 });
 
 function checkUser(user) {
@@ -167,7 +182,7 @@ function checkUser(user) {
   });
 }
 
-// ---------------- 管理者功能 ----------------
+// 管理者功能
 function loadAdminPage() {
   adminPage.style.display = "block";
   loadUsers();
@@ -180,10 +195,7 @@ function addNewUser() {
   const role = document.getElementById("newUserRole").value;
   if(!name || !email) return alert("請輸入姓名和 Gmail");
   db.collection("users").add({ name, email, role, classId:null })
-    .then(()=> {
-      alert("用戶新增完成");
-      loadUsers();
-    });
+    .then(()=> { alert("用戶新增完成"); loadUsers(); });
 }
 
 function loadUsers() {
@@ -223,7 +235,7 @@ function loadAllClasses() {
   });
 }
 
-// ---------------- 老師功能 ----------------
+// 老師功能
 const classList = document.getElementById('classList');
 const createClassDiv = document.getElementById('createClassDiv');
 const classPageDiv = document.getElementById('classPageDiv');
@@ -279,7 +291,7 @@ function saveQuestion(){
   }).then(()=>alert("題目已儲存"));
 }
 
-// ---------------- 學生功能 ----------------
+// 學生功能
 function loadStudentPage(uid){
   studentPage.style.display="block";
   db.collection("questions").where("target","==","all").get().then(snapshot=>{
