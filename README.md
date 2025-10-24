@@ -1,2 +1,0 @@
-# ClassQuest
-ClassQuest
