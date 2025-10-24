@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClassQuest AIlead/Likedu 系統</title>
+<title>ClassQuest AIlead / Likedu 系統</title>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{font-family:"Segoe UI",sans-serif;background:#f5f6fa;display:flex;justify-content:center;padding:20px;}
 .card{background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.1);width:720px;padding:30px;text-align:center;margin-bottom:20px;}
-button{width:100%;padding:10px;margin-top:10px;border:none;border-radius:8px;background:#4285F4;color:#fff;cursor:pointer;font-size:16px;}
+button{padding:10px;margin:5px;border:none;border-radius:8px;background:#4285F4;color:#fff;cursor:pointer;font-size:16px;}
 button:hover{background:#3367D6;}
 input,select,textarea{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
 ul{list-style:none;padding:0;}
 li{padding:8px;background:#f8f9fa;margin:6px 0;border-radius:8px;cursor:pointer;}
 li:hover{background:#e2e6ea;}
 .hidden{display:none;}
+.tab{display:flex;justify-content:center;margin-bottom:20px;}
+.tab button{flex:1;margin:0 2px;}
 .section{margin-top:20px;text-align:left;}
 textarea{resize:none;}
 .option-btn{margin-top:5px;width:48%;margin-right:2%;}
@@ -35,7 +36,8 @@ textarea{resize:none;}
 <div class="card hidden" id="mainCard">
   <h2 id="welcomeText"></h2>
   <button id="logoutBtn">登出</button>
-  <div id="contentArea"></div>
+  <div class="tab" id="tabMenu"></div>
+  <div id="tabContent"></div>
 </div>
 
 <script type="module">
@@ -62,9 +64,10 @@ const mainCard=document.getElementById("mainCard");
 const loginBtn=document.getElementById("loginBtn");
 const logoutBtn=document.getElementById("logoutBtn");
 const welcomeText=document.getElementById("welcomeText");
-const contentArea=document.getElementById("contentArea");
+const tabMenu=document.getElementById("tabMenu");
+const tabContent=document.getElementById("tabContent");
 
-// 登入登出
+// 登入
 loginBtn.addEventListener("click", async ()=>{
   try{
     const result = await signInWithPopup(auth, provider);
@@ -72,11 +75,11 @@ loginBtn.addEventListener("click", async ()=>{
     const userRef = doc(db,"users",user.uid);
     const userSnap = await getDoc(userRef);
     if(!userSnap.exists()){
-      // 預設學生
       await setDoc(userRef,{email:user.email,name:user.displayName,role:"student",classId:null});
     }
   }catch(e){alert("登入失敗："+e.message);}
 });
+// 登出
 logoutBtn.addEventListener("click", async ()=>{await signOut(auth);});
 
 // 監聽登入狀態
@@ -87,19 +90,36 @@ onAuthStateChanged(auth, async user=>{
     welcomeText.textContent=`👋 歡迎，${user.displayName}`;
     const userSnap = await getDoc(doc(db,"users",user.uid));
     const role = userSnap.data().role;
-    if(role==="teacher") renderTeacherUI(user);
-    else if(role==="admin") renderAdminUI(user);
-    else renderStudentUI(user);
+    renderTabs(user, role);
   }else{
     loginCard.classList.remove("hidden");
     mainCard.classList.add("hidden");
-    contentArea.innerHTML="";
+    tabMenu.innerHTML="";
+    tabContent.innerHTML="";
   }
 });
 
+// ---------------- Tab UI ----------------
+function renderTabs(user, role){
+  tabMenu.innerHTML="";
+  tabContent.innerHTML="";
+  let tabs=[];
+  if(role==="student") tabs=[{name:"學生作答",func:()=>renderStudentUI(user)}];
+  if(role==="teacher") tabs=[{name:"出題/指派",func:()=>renderTeacherUI(user)}];
+  if(role==="admin") tabs=[{name:"管理使用者",func:()=>renderAdminUI(user)}];
+  // 生成 Tab 按鈕
+  tabs.forEach((t,i)=>{
+    const btn=document.createElement("button");
+    btn.textContent=t.name;
+    btn.onclick=()=>{tabContent.innerHTML=""; t.func();}
+    tabMenu.appendChild(btn);
+    if(i===0) t.func();
+  });
+}
+
 // ---------------- 老師 UI ----------------
 async function renderTeacherUI(user){
-  contentArea.innerHTML=`
+  tabContent.innerHTML=`
   <div class="section">
     <h3>新增選擇題</h3>
     <textarea id="questionContent" rows="2" placeholder="題目內容"></textarea>
@@ -108,14 +128,13 @@ async function renderTeacherUI(user){
     <input type="text" id="optC" placeholder="選項 C">
     <input type="text" id="optD" placeholder="選項 D">
     <select id="correctAnswer">
-      <option value="">選擇正確答案</option>
+      <option value="">正確答案</option>
       <option value="A">A</option><option value="B">B</option>
       <option value="C">C</option><option value="D">D</option>
     </select>
     <textarea id="explanation" rows="2" placeholder="解釋"></textarea>
     <button id="addQuestionBtn">出題</button>
   </div>
-
   <div class="section">
     <h3>指派試卷</h3>
     <input type="text" id="assignClass" placeholder="班級或學生 Gmail">
@@ -160,7 +179,6 @@ async function renderTeacherUI(user){
     const explanation=document.getElementById("explanation").value.trim();
     if(!content||!optA||!optB||!optC||!optD||!correct) return alert("請完整填寫題目與選項");
     await addDoc(collection(db,"questions"),{content,optA,optB,optC,optD,correctAnswer:correct,explanation,teacherId:user.uid});
-    // 自動清空
     document.getElementById("questionContent").value="";
     document.getElementById("optA").value="";
     document.getElementById("optB").value="";
@@ -194,7 +212,7 @@ async function renderTeacherUI(user){
 
 // ---------------- 管理者 UI ----------------
 async function renderAdminUI(user){
-  contentArea.innerHTML=`
+  tabContent.innerHTML=`
   <div class="section">
     <h3>管理使用者</h3>
     <input type="text" id="adminEmail" placeholder="輸入 Gmail">
@@ -205,18 +223,17 @@ async function renderAdminUI(user){
     </select>
     <button id="setRoleBtn">設定角色</button>
   </div>`;
-  
   document.getElementById("setRoleBtn").onclick=async ()=>{
     const email=document.getElementById("adminEmail").value.trim();
     const role=document.getElementById("adminRole").value;
     if(!email) return alert("請輸入 Gmail");
-    // 查詢 user
     const usersSnap = await getDocs(query(collection(db,"users"),where("email","==",email)));
     if(usersSnap.empty){
       await addDoc(collection(db,"users"),{email,name:email,role,classId:null});
     } else {
       usersSnap.forEach(async u=>{
-        await setDoc(doc(db,"users",u.id),{email:name,role,classId:null},{merge:true});
+        const data=u.data();
+        await setDoc(doc(db,"users",u.id),{email:data.email,name:data.name,role,classId:null},{merge:true});
       });
     }
     alert("角色已設定！");
@@ -225,17 +242,16 @@ async function renderAdminUI(user){
 
 // ---------------- 學生 UI ----------------
 async function renderStudentUI(user){
-  contentArea.innerHTML=`
+  tabContent.innerHTML=`
   <div class="section">
     <h3>可作答題目</h3>
     <ul id="quizList"></ul>
     <button id="submitBtn">完成試卷並提交</button>
   </div>`;
-  
   const ul=document.getElementById("quizList");
   const aSnap=await getDocs(query(collection(db,"answers"),where("studentId","==",user.email)));
   const myAnswers=aSnap.docs;
-  
+
   for(const docAns of myAnswers){
     const qDoc=await getDoc(doc(db,"questions",docAns.data().questionId));
     const q=qDoc.data();
@@ -264,8 +280,9 @@ async function renderStudentUI(user){
     for(const docAns of myAnswers){
       const qDoc=await getDoc(doc(db,"questions",docAns.data().questionId));
       const q=qDoc.data();
-      const selected=(await getDoc(doc(db,"answers",docAns.id))).data().selected;
-      const isCorrect=selected===q.correctAnswer;
+      const ansSnap = await getDoc(doc(db,"answers",docAns.id));
+      const selected = ansSnap.data().selected;
+      const isCorrect = selected===q.correctAnswer;
       if(isCorrect) correctCount++;
       await setDoc(doc(db,"answers",docAns.id),{...docAns.data(),correct:isCorrect});
     }
