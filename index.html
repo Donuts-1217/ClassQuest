@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClassQuest AIlead UI</title>
+<title>ClassQuest 完整系統</title>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
@@ -22,8 +22,8 @@ body {
   background:#fff;
   border-radius:16px;
   box-shadow:0 4px 16px rgba(0,0,0,0.1);
-  width:400px;
-  max-width:90%;
+  width:450px;
+  max-width:95%;
   padding:30px;
   margin:15px auto;
   text-align:center;
@@ -59,6 +59,7 @@ li { background:#f8f9fa; margin:6px 0; padding:8px; border-radius:8px; cursor:po
 li:hover { background:#e2e6ea; }
 .hidden { display:none; }
 .section { text-align:left; margin-top:20px; }
+textarea { resize:none; }
 </style>
 </head>
 <body>
@@ -86,7 +87,7 @@ const firebaseConfig = {
   projectId:"classquest-419e1",
   storageBucket:"classquest-419e1.firebasestorage.app",
   messagingSenderId:"18905423391",
-  appId:"1:18905423391:web:37c3aa41f021430f27ff2a"
+  appId:"1:18905423391:web:37c3aa41f021430f"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -152,7 +153,13 @@ function renderAdminUI(){
         <option value="admin">管理者</option>
       </select>
       <button id="setRoleBtn">設定</button>
-    </div>`;
+    </div>
+    <div class="section">
+      <h3>所有班級</h3>
+      <ul id="allClassList"></ul>
+    </div>
+  `;
+
   document.getElementById("setRoleBtn").onclick=async ()=>{
     const email=document.getElementById("emailInput").value.trim();
     const newRole=document.getElementById("roleSelect").value;
@@ -168,6 +175,11 @@ function renderAdminUI(){
       }
     }
     if(!found) alert("找不到該使用者");
+
+    const allClassList=document.getElementById("allClassList");
+    const classesSnap=await getDocs(collection(db,"classes"));
+    allClassList.innerHTML="";
+    classesSnap.forEach(c=>{ allClassList.innerHTML+=`<li>${c.data().name} (${c.data().teacherId})</li>`; });
   };
 }
 
@@ -191,26 +203,27 @@ async function renderTeacherUI(user){
       </select>
       <select id="subjectSelect"><option value="">選擇科目</option></select>
       <select id="classSelect"><option value="">選擇班級</option></select>
-      <select id="studentSelect"><option value="">選擇學生(可選全班)</option></select>
+      <select id="studentSelect"><option value="">選擇學生(全班可留空)</option></select>
       <button id="confirmRangeBtn">確定範圍</button>
     </div>
 
     <div id="questionSection" class="section hidden">
       <h3>出題內容</h3>
       <textarea id="questionContent" rows="3" placeholder="輸入題目內容"></textarea>
+      <input type="text" id="correctAnswer" placeholder="正確答案">
+      <textarea id="explanation" rows="2" placeholder="解釋"></textarea>
       <button id="addQuestionBtn">出題</button>
     </div>
   `;
 
-  const classList = document.getElementById("classList");
-  let currentClassId = "";
-  let selectedRange = {};
+  const classList=document.getElementById("classList");
+  let currentClassId="";
+  let selectedRange={};
 
-  // 建立班級
   document.getElementById("createClassBtn").onclick=async ()=>{
     const name=document.getElementById("className").value.trim();
     if(!name) return alert("請輸入班級名稱");
-    const docRef = await addDoc(collection(db,"classes"),{name,teacherId:user.uid});
+    await addDoc(collection(db,"classes"),{name,teacherId:user.uid});
     alert("班級建立成功！");
     loadClasses();
   };
@@ -219,7 +232,7 @@ async function renderTeacherUI(user){
     classList.innerHTML="";
     const q=query(collection(db,"classes"),where("teacherId","==",user.uid));
     const snapshot=await getDocs(q);
-    const classSelect = document.getElementById("classSelect");
+    const classSelect=document.getElementById("classSelect");
     classSelect.innerHTML=`<option value="">選擇班級</option>`;
     snapshot.forEach(docSnap=>{
       const li=document.createElement("li");
@@ -230,7 +243,6 @@ async function renderTeacherUI(user){
     });
   }
 
-  // 學段選科目
   document.getElementById("levelSelect").addEventListener("change",()=>{
     const level=document.getElementById("levelSelect").value;
     let subjects=[];
@@ -240,8 +252,7 @@ async function renderTeacherUI(user){
     document.getElementById("subjectSelect").innerHTML=`<option value="">選擇科目</option>`+subjects.map(s=>`<option value="${s}">${s}</option>`).join("");
   });
 
-  // 確定範圍
-  document.getElementById("confirmRangeBtn").onclick=()=>{
+  document.getElementById("confirmRangeBtn").onclick=async ()=>{
     const level=document.getElementById("levelSelect").value;
     const subject=document.getElementById("subjectSelect").value;
     const classId=document.getElementById("classSelect").value;
@@ -252,18 +263,23 @@ async function renderTeacherUI(user){
     alert(`已選範圍: ${level} ${subject}`);
   };
 
-  // 出題
   document.getElementById("addQuestionBtn").onclick=async ()=>{
     const content=document.getElementById("questionContent").value.trim();
-    if(!content) return alert("請輸入題目內容");
+    const correct=document.getElementById("correctAnswer").value.trim();
+    const explanation=document.getElementById("explanation").value.trim();
+    if(!content||!correct||!explanation) return alert("請完整填寫題目、答案與解釋");
     await addDoc(collection(db,"questions"),{
       ...selectedRange,
       content,
+      correctAnswer: correct,
+      explanation,
       teacherId:user.uid,
       timestamp:Date.now()
     });
     alert("出題成功！");
     document.getElementById("questionContent").value="";
+    document.getElementById("correctAnswer").value="";
+    document.getElementById("explanation").value="";
   };
 
   loadClasses();
@@ -278,7 +294,7 @@ async function renderStudentUI(user){
     const q=docSnap.data();
     if(q.student===user.uid||!q.student) {
       const li=document.createElement("li");
-      li.textContent=`${q.level} ${q.subject}：${q.content}`;
+      li.innerHTML=`<b>${q.level} ${q.subject}</b><br>${q.content}<br><b>答案:</b> ${q.correctAnswer}<br><b>解釋:</b> ${q.explanation}`;
       testList.appendChild(li);
     }
   });
